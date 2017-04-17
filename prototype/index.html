@@ -6,19 +6,16 @@
   <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 
   <style>
-    .mdl-card {
-      margin: 10px;
-    }
-    
-    .mdl-card-container {
+    .image-container {
       background: center/cover;
-      display: flex;
+      display: block;
       flex-wrap: wrap;
       justify-content: center;
     }
     
     .mdl-layout__content {
       background: #212121;
+      padding: 10px;
     }
     
     .image-card {
@@ -54,7 +51,7 @@
     </div>-->
     <main class="mdl-layout__content">
 
-      <div class="mdl-card-container">
+      <div id="image-container" class="image-container">
 
         <img class="image-card mdl-shadow--2dp" src="../sample_images/6_gummy_bears.png">
         <img class="image-card mdl-shadow--2dp" src="../sample_images/fort_kickass.jpg">
