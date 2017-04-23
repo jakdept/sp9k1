@@ -16,10 +16,12 @@ function open(target) {
   target.animate({ marginBottom: "660px" }, 200);
   target.addClass("image-card-selected");
   imageOffset = target.offset();
-  $("#preview-pane-container").css(
-    "top", imageOffset.top + target.height + 20
+  console.log(imageOffset);
+  console.log(String(imageOffset.top + target.height() + 20)+ "px");
+  $("#preview-pane-container").css({
+    top: imageOffset.top + target.height() + 20 + "px"
     // "left", imageOffset.left + (target.width / 2)
-  );
+  });
   $("#preview-pane-container").show(100);
 }
 
