@@ -27,6 +27,7 @@
     
     #preview-pane-container {
       /*z-index:30;*/
+      display: none;
       max-height: 70%;
       min-height: 350px;
       /*height: 635px;*/

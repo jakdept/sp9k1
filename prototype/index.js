@@ -30,4 +30,6 @@ $(document).ready(function () {
     open($(this));
   });
 
+  $("#preview-pane-container").hide(0);
+
 });
