@@ -9,27 +9,30 @@ function close() {
 }
 
 function open(target) {
-  close();
+  console.log("opening")
 
-  console.log("opening");
+  newTop = target.offset().top + target.height() + 20 + "px";
+  $("#preview-pane-container").css({ top: newTop });
+  target.addClass("image-card-selected");
 
   target.animate({ marginBottom: "660px" }, 200);
-  target.addClass("image-card-selected");
-  imageOffset = target.offset();
-  console.log(imageOffset);
-  console.log(String(imageOffset.top + target.height() + 20)+ "px");
-  $("#preview-pane-container").css({
-    top: imageOffset.top + target.height() + 20 + "px"
-    // "left", imageOffset.left + (target.width / 2)
-  });
-  $("#preview-pane-container").show(100);
+  setTimeout(function () {
+    $("#preview-pane-container").show(100);
+  }, 100);
+}
+
+function imageClick(target) {
+  close();
+  setTimeout(function() {
+    open(target);
+  }, 200)
 }
 
 $(document).ready(function () {
 
   $(".preview-pane-close-button ").on("click", close);
   $(".image-card").on("click", function () {
-    open($(this));
+    imageClick($(this));
   });
 
   $("#preview-pane-container").hide(0);
