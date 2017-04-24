@@ -11,8 +11,10 @@ function close() {
 function open(target) {
   console.log("opening")
 
-  newTop = target.offset().top + target.height() + 20 + "px";
+  // add 20 px for the padding offset, remove 64 for the header row
+  newTop = target.offset().top + target.height() + 20 - 64 + "px";
   $("#preview-pane-container").css({ top: newTop });
+  // $(".preview-pane a img").css({src: })
   target.addClass("image-card-selected");
 
   target.animate({ marginBottom: "660px" }, 200);
@@ -23,9 +25,12 @@ function open(target) {
 
 function imageClick(target) {
   close();
+  // if you run the full close it takes 400 ms(ish)
+  // first 200ms will leaaad to the thing being closed then opened
+  // second 200ms will give the improper position
   setTimeout(function() {
     open(target);
-  }, 200)
+  }, 400)
 }
 
 $(document).ready(function () {
