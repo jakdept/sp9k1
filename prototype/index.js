@@ -14,7 +14,7 @@ function open(target) {
   // add 20 px for the padding offset, remove 64 for the header row
   newTop = target.offset().top + target.height() + 20 - 64 + "px";
   $("#preview-pane-container").css({ top: newTop });
-  // $(".preview-pane a img").css({src: })
+  $(".preview-pane a img").attr("src", target.attr("src"));
   target.addClass("image-card-selected");
 
   target.animate({ marginBottom: "660px" }, 200);
