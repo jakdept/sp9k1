@@ -17,7 +17,17 @@ function open(target) {
   $(".preview-pane a img").attr("src", target.attr("src"));
   target.addClass("image-card-selected");
 
-  target.animate({ marginBottom: "660px" }, 200);
+  var newImg = new Image();
+  newImg.src = target.attr("src");
+
+  imageHeight = newImg.height;
+  if (imageHeight < 350) {
+    imageHeight = 350;
+  }
+  bottomOffset = imageHeight + 80 + "px";
+  console.log(bottomOffset)
+
+  target.animate({ marginBottom: bottomOffset }, 200);
   setTimeout(function () {
     $("#preview-pane-container").show(100);
   }, 100);
@@ -28,7 +38,7 @@ function imageClick(target) {
   // if you run the full close it takes 400 ms(ish)
   // first 200ms will leaaad to the thing being closed then opened
   // second 200ms will give the improper position
-  setTimeout(function() {
+  setTimeout(function () {
     open(target);
   }, 400)
 }
