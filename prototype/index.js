@@ -52,4 +52,5 @@ $(document).ready(function () {
 
   $("#preview-pane-container").hide(0);
 
+  $(window).resize(close)
 });
