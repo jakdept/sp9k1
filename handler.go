@@ -97,7 +97,3 @@ func ServeFolder(basePath string, templ *template.Template) http.HandlerFunc {
 		}
 	}
 }
-
-func main() {
-
-}
