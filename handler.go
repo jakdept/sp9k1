@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,12 +17,14 @@ func ServeFile(basePath string) http.HandlerFunc {
 		f, err := os.Open(filepath.Join(basePath, r.URL.Path))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("not found: %s", r.URL.Path), http.StatusNotFound)
+			log.Printf("404 - could not open file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
 		stat, err := f.Stat()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusForbidden)
+			log.Printf("403 - could not stat file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
@@ -30,12 +33,14 @@ func ServeFile(basePath string) http.HandlerFunc {
 		_, err = f.Read(chunk)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusForbidden)
+			log.Printf("403 - could not read from file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
 		_, err = f.Seek(0, io.SeekStart)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+			log.Printf("500 - could not seek within file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
@@ -53,12 +58,14 @@ func ServeFolder(basePath string, templ *template.Template) http.HandlerFunc {
 		f, err := os.Open(filepath.Join(basePath, r.URL.Path))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("not found: %s", r.URL.Path), http.StatusNotFound)
+			log.Printf("404 - could not find file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
 		stat, err := f.Stat()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read target: %s", r.URL.Path), http.StatusInternalServerError)
+			log.Printf("403 - could not stat file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
@@ -70,6 +77,7 @@ func ServeFolder(basePath string, templ *template.Template) http.HandlerFunc {
 		contents, err := f.Readdir(0)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read directory: %s", r.URL.Path), http.StatusForbidden)
+			log.Printf("403 - could not read file: %s - %s", filepath.Join(basePath, r.URL.Path), err)
 			return
 		}
 
@@ -93,6 +101,7 @@ func ServeFolder(basePath string, templ *template.Template) http.HandlerFunc {
 		err = templ.Execute(w, data)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error building response: %s", r.URL.Path), http.StatusInternalServerError)
+			log.Printf("500 - error responding: %s", err)
 			return
 		}
 	}

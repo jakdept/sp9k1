@@ -1,0 +1,85 @@
+    .image-container {
+      /*z-index: 20;*/
+      background: center/cover;
+      display: flex;
+      flex-flow: row wrap;
+      /*justify-content: center;*/
+    }
+    
+    .mdl-layout__content {
+      /*z-index: 10;*/
+      background: #212121;
+      padding: 10px;
+    }
+    
+    .image-card {
+      /*z-index: 50;*/
+      margin: 10px;
+      height: 200px;
+      width: 310px;
+      box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .2), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    }
+    
+    /*.image-card-selected {
+      margin-bottom: 660px;
+    }*/
+    
+    #preview-pane-container {
+      /*z-index:30;*/
+      display: none;
+      /*max-height: 70%;
+      min-height: 350px;*/
+      /*height: 635px;*/
+      /*height: 700px;*/
+      width: 100%;
+      background: #101010;
+      position: absolute;
+      top: 470px;
+      left: 0px;
+    }
+    
+    .preview-pane {
+      /*z-index: 40;*/
+      position: block;
+      /*border-right: 1px solid #343434;*/
+      /*border-right: 1px solid #343434;*/
+      width: 58%;
+      height: 100%;
+      margin: 20px;
+      /*padding: 10px;*/
+      float: left;
+    }
+
+    .preview-pane > a > img {
+      display: block;
+      /*width: 100%;*/
+      margin: auto;
+      /*float: left;*/
+      padding: 5px;
+      max-height: 70%;
+      min-height: 350px;
+    }
+    
+    #preview-pane-control {
+      width: 38%;
+      height: 100%;
+      float: right;
+      padding: 2px;
+      justify-content: right;
+      position: relative;
+    }
+    
+    .preview-icon {
+      color: #343434;
+      font-size: 48;
+    }
+
+    .preview-pane-control-stack {
+      width: 100%;
+      display: inline-block;
+    }
+    .preview-pane-control-buttons {
+      vertical-align: text-bottom;
+      margin: 40px;
+      height: 100%;
+    }
