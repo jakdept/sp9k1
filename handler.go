@@ -58,6 +58,12 @@ func IndexHandler(basePath string, templ *template.Template) http.Handler {
 	return indexHandler{basePath, templ}
 }
 
+type IndexData struct {
+	Files []string
+	Dirs  []string
+	All   []string
+}
+
 type indexHandler struct {
 	basePath string
 	templ    *template.Template
@@ -91,19 +97,15 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var data struct {
-		files []string
-		dirs  []string
-		all   []string
-	}
+	var data IndexData
 
 	for _, each := range contents {
-		data.all = append(data.all, each.Name())
+		data.All = append(data.All, each.Name())
 		switch each.IsDir() {
 		case true:
-			data.dirs = append(data.dirs, each.Name())
+			data.Dirs = append(data.Dirs, each.Name())
 		default:
-			data.files = append(data.files, each.Name())
+			data.Files = append(data.Files, each.Name())
 		}
 	}
 
