@@ -1,0 +1,5 @@
+{
+	"all":{"component.css""default.css", "grandtheft", "grid.js", "lemur_pudding_cups.jpg", "modernizr.custom.js", "page.html", "page.template", "spooning_a_barret.png", "templateHandler.golden", "whats_in_the_case.gif", },
+	"files":{"component.css""default.css", "grid.js", "lemur_pudding_cups.jpg", "modernizr.custom.js", "page.html", "page.template", "spooning_a_barret.png", "templateHandler.golden", "whats_in_the_case.gif", },
+	"dirs":{"grandtheft"}
+}

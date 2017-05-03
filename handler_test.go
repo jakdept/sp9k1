@@ -1,8 +1,13 @@
+// built with goldie
+// if golden files in fixture dir are manually verified, you can update with
+// go test -update
+
 package main
 
 import (
 	"crypto/md5"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,6 +17,7 @@ import (
 
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
+	"github.com/sebdah/goldie"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -239,6 +245,124 @@ func TestContentTypeHandler(t *testing.T) {
 	}
 }
 
-func TestSplitHandler(t *testing.T) {
+func TestIndexHandler_successful(t *testing.T) {
+	templateString := `{
+	"all":{
+	{{- range $index, $value := .All -}}
+	"{{- . -}}"
+	{{- if $index }}, {{ end -}}
+	{{- end -}}
+	},
+	"files":{
+	{{- range $index, $value := .Files -}}
+	"{{- . -}}"
+	{{- if $index }}, {{ end -}}
+	{{- end -}}
+	},
+	"dirs":{
+	{{- range $index, $value := .Dirs -}}
+	"{{- . -}}"
+	{{- if $index }}, {{ end -}}
+	{{- end -}}
+	}
+}`
 
+	testTempl := template.Must(template.New("test").Parse(templateString))
+
+	ts := httptest.NewServer(IndexHandler("testdata", testTempl))
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("could not read response: [%s]", err)
+	}
+	res.Body.Close()
+
+	goldie.Assert(t, "templateHandler", actual)
+}
+
+// test to make sure a bad folder kicks a 404
+func TestIndexHandler_badpath(t *testing.T) {
+	templateString := ""
+	testTempl := template.Must(template.New("test").Parse(templateString))
+
+	ts := httptest.NewServer(IndexHandler("not-a-folder", testTempl))
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 404, res.StatusCode, "got wrong response")
+}
+
+// test to make sure that a bad template kicks a 500
+func TestIndexHandler_badtemplate(t *testing.T) {
+	templateString := "{{ .ValueNotPresent }}"
+	testTempl := template.Must(template.New("test").Parse(templateString))
+
+	ts := httptest.NewServer(IndexHandler("testdata", testTempl))
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 500, res.StatusCode, "got wrong response")
+}
+
+// handler will always response with 200 ok and the given body
+func foundHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "ohai mr client")
+	})
+}
+
+func TestSplitHandler(t *testing.T) {
+	testData := []struct {
+		uri  string
+		code int
+	}{
+		{uri: "/", code: 200},
+		{uri: "/other", code: 404},
+		{uri: "", code: 200},
+		{uri: "./", code: 200},
+		{uri: "bad/url", code: 404},
+	}
+
+	// setup a handler that returns one thing on the main path, and another on other paths
+	ts := httptest.NewServer(SplitHandler(foundHandler(), http.NotFoundHandler()))
+	defer ts.Close()
+
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("failed to parse url: %s", err)
+	}
+
+	for testID, test := range testData {
+
+		uri, err := url.Parse(test.uri)
+		if err != nil {
+			t.Errorf("bad URI path: [%s]", test.uri)
+			continue
+		}
+
+		res, err := http.Get(baseURL.ResolveReference(uri).String())
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		if res.StatusCode == 200 {
+			res.Body.Close()
+		}
+
+		assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
+	}
 }
