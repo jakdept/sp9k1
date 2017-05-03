@@ -43,7 +43,7 @@ type internalHandler struct {
 }
 
 func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if path.Ext(r.URL.Path) == "template" {
+	if path.Ext(r.URL.Path) == ".template" {
 		http.Error(w, fmt.Sprintf("template requested, blocked: %s", r.URL.Path), http.StatusForbidden)
 		log.Printf("403 - error responding: %s", r.URL.Path)
 		return
@@ -139,8 +139,8 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	stat, err := f.Stat()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusForbidden)
-		log.Printf("403 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+		log.Printf("500 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
@@ -148,8 +148,8 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	_, err = f.Read(chunk)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusForbidden)
-		log.Printf("403 - could not read from file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+		log.Printf("500 - could not read from file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 

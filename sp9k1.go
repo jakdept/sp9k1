@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	templ, err := template.New("page.html").Parse(string(templateData))
+	templ, err := template.New("page.template").Parse(string(templateData))
 	if err != nil {
 		log.Fatal(err)
 	}
