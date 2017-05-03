@@ -197,6 +197,25 @@ func TestContentTypeHandler(t *testing.T) {
 			md5:           "2f43a5317fa2f60dbf32276faf3f139a",
 			contentLength: 32933853,
 			contentType:   "image/gif",
+			// it's vitally important that we can serve files with the WRONG extension correctly
+		}, {
+			uri:           "/accidentally_save_file.gif",
+			code:          200,
+			md5:           "a305f39d197dce79acae597e81e22bf4",
+			contentLength: 187967,
+			contentType:   "image/png",
+		}, {
+			uri:           "/blocked_us.png",
+			code:          200,
+			md5:           "bc2272b02e6fab9c0c48d4743d4aae7e",
+			contentLength: 45680,
+			contentType:   "image/jpeg",
+		}, {
+			uri:           "/carlton_pls.jpg",
+			code:          200,
+			md5:           "7c0dc59a6ebad1645fca205f701edb39",
+			contentLength: 871029,
+			contentType:   "image/gif",
 		},
 	}
 	ts := httptest.NewServer(ContentTypeHandler("./testdata/"))
@@ -249,20 +268,20 @@ func TestIndexHandler_successful(t *testing.T) {
 	templateString := `{
 	"all":{
 	{{- range $index, $value := .All -}}
-	"{{- . -}}"
 	{{- if $index }}, {{ end -}}
+	"{{- . -}}"
 	{{- end -}}
 	},
 	"files":{
 	{{- range $index, $value := .Files -}}
-	"{{- . -}}"
 	{{- if $index }}, {{ end -}}
+	"{{- . -}}"
 	{{- end -}}
 	},
 	"dirs":{
 	{{- range $index, $value := .Dirs -}}
-	"{{- . -}}"
 	{{- if $index }}, {{ end -}}
+	"{{- . -}}"
 	{{- end -}}
 	}
 }`
