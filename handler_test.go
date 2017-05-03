@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"path"
+	"net/url"
 	"testing"
 
 	_ "github.com/jakdept/sp9k1/statik"
@@ -35,7 +35,7 @@ var handlerTestData = []struct {
 		uri:           "/default.css",
 		code:          200,
 		md5:           "b1cf11f4d2cda79f08a58383863346a7",
-		contentLength: 100,
+		contentLength: 1868,
 	},
 }
 
@@ -43,11 +43,20 @@ func TestInternalHandler(t *testing.T) {
 	ts := httptest.NewServer(InternalHandler(testFS))
 	defer ts.Close()
 
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("failed to parse url: %s", err)
+	}
+
 	for testID, test := range handlerTestData {
 
-		log.Printf("hitting URI: [%s]", path.Join(ts.URL, test.uri))
+		uri, err := url.Parse(test.uri)
+		if err != nil {
+			t.Errorf("bad URI path: [%s]", test.uri)
+			continue
+		}
 
-		res, err := http.Get(path.Join(ts.URL, test.uri))
+		res, err := http.Get(baseURL.ResolveReference(uri).String())
 		if err != nil {
 			t.Error(err)
 			continue
