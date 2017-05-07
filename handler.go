@@ -189,14 +189,61 @@ type thumbnailHandler struct {
 	thumbExt string
 }
 
-func (h *thumbnailHandler) openThumb(imageName string) (image.Image, error) {
+func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f, err := os.Open(filepath.Clean(fmt.Sprintf("%s/%s.%s", h.thumbs, r.URL.Path, h.thumbExt)))
+	if os.IsNotExist(err) {
+		var img image.Image
+		img, err = h.cacheThumb(r.URL.Path)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+			log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/"+h.thumbExt)
+		switch h.thumbExt {
+		case "jpg":
+			jpeg.Encode(w, img, nil)
+			return
+		case "jpeg":
+			jpeg.Encode(w, img, nil)
+			return
+		case "png":
+			png.Encode(w, img)
+			return
+		default:
+			http.Error(w, fmt.Sprintf("could not respond with file; %s", r.URL.Path), http.StatusInternalServerError)
+			log.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+			return
+		}
+
+	} else if err != nil {
+		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+		log.Printf("500 - could not stat file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/"+h.thumbExt)
+	http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
+	return
+}
+
+func (h thumbnailHandler) cacheThumb(imageName string) (image.Image, error) {
 	img, format, err := h.openImage(fmt.Sprintf("%s/%s.%s", h.thumbs, imageName, h.thumbExt))
-	if os.ISNotExist(err) || format != h.thumbExt {
+	if os.IsNotExist(err) || format != h.thumbExt {
 		img, _, err = h.openImage(fmt.Sprintf("%s/%s", h.thumbs, imageName))
 		if err != nil {
 			return nil, fmt.Errorf("could not open image [%s]: %s", imageName, err)
 		}
-		img, err = h.generateTHumbnail(img)
+		img, err = h.generateThumbnail(img)
 		if err != nil {
 			return nil, fmt.Errorf("could not process [%s]: %s", imageName, err)
 		}
@@ -211,7 +258,7 @@ func (h *thumbnailHandler) openThumb(imageName string) (image.Image, error) {
 	return img, nil
 }
 
-func (h *thumbnailHandler) openImage(imageName string) (image.Image, string, error) {
+func (h thumbnailHandler) openImage(imageName string) (image.Image, string, error) {
 	path := filepath.Clean(imageName)
 	reader, err := os.Open(path)
 	if err != nil {
@@ -224,7 +271,7 @@ func (h *thumbnailHandler) openImage(imageName string) (image.Image, string, err
 	return img, format, nil
 }
 
-func (h *thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
+func (h thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
 	out, err := os.Create(filepath.Join(h.raw, imageName))
 	if err != nil {
 		return err
@@ -242,7 +289,7 @@ func (h *thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image
 	}
 }
 
-func (h *thumbnailHandler) generateThumbnail(rawImage image.Image) (image.Image, error) {
+func (h thumbnailHandler) generateThumbnail(rawImage image.Image) (image.Image, error) {
 	shrunk := resize.Resize(0, uint(h.y), rawImage, resize.MitchellNetravali)
 	thumbnail, err := cutter.Crop(shrunk, cutter.Config{
 		Height:  h.x,
