@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"image"
 	"io"
 	"log"
 	"net/http"
@@ -12,7 +13,16 @@ import (
 	"path"
 	"path/filepath"
 
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
+	"image/jpeg"
+	"image/png"
+
 	_ "github.com/jakdept/sp9k1/statik"
+	"github.com/nfnt/resize"
+	"github.com/oliamb/cutter"
 )
 
 // SplitHandler allows the routing of one handler at /, and another at all locations below /.
@@ -136,6 +146,7 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("404 - could not open file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
+	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {
@@ -164,4 +175,82 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
 
 	return
+}
+
+func ThumbnailHandler(targetHeight, targetWidth int, rawImageDirectory, thumbnailDirectory string) http.Handler {
+	return thumbnailHandler{x: targetHeight, y: targetWidth, raw: rawImageDirectory, thumbs: thumbnailDirectory}
+}
+
+type thumbnailHandler struct {
+	x        int
+	y        int
+	raw      string
+	thumbs   string
+	thumbExt string
+}
+
+func (h *thumbnailHandler) openThumb(imageName string) (image.Image, error) {
+	img, format, err := h.openImage(fmt.Sprintf("%s/%s.%s", h.thumbs, imageName, h.thumbExt))
+	if os.ISNotExist(err) || format != h.thumbExt {
+		img, _, err = h.openImage(fmt.Sprintf("%s/%s", h.thumbs, imageName))
+		if err != nil {
+			return nil, fmt.Errorf("could not open image [%s]: %s", imageName, err)
+		}
+		img, err = h.generateTHumbnail(img)
+		if err != nil {
+			return nil, fmt.Errorf("could not process [%s]: %s", imageName, err)
+		}
+		err = h.writeThumbnail(imageName, img)
+		if err != nil {
+			return nil, fmt.Errorf("could not cache [%s]: %s", imageName, err)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("problem loading thumbnail [%s]: %s", imageName, err)
+	}
+	return img, nil
+}
+
+func (h *thumbnailHandler) openImage(imageName string) (image.Image, string, error) {
+	path := filepath.Clean(imageName)
+	reader, err := os.Open(path)
+	if err != nil {
+		return nil, "", err
+	}
+	img, format, err := image.Decode(reader)
+	if err != nil {
+		return nil, "", err
+	}
+	return img, format, nil
+}
+
+func (h *thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
+	out, err := os.Create(filepath.Join(h.raw, imageName))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	switch h.thumbExt {
+	case "jpg":
+		return jpeg.Encode(out, thumbnailImage, nil)
+	case "jpeg":
+		return jpeg.Encode(out, thumbnailImage, nil)
+	case "png":
+		return png.Encode(out, thumbnailImage)
+	default:
+		return fmt.Errorf("extension type [%s] not supported for thumbnails", h.thumbExt)
+	}
+}
+
+func (h *thumbnailHandler) generateThumbnail(rawImage image.Image) (image.Image, error) {
+	shrunk := resize.Resize(0, uint(h.y), rawImage, resize.MitchellNetravali)
+	thumbnail, err := cutter.Crop(shrunk, cutter.Config{
+		Height:  h.x,
+		Options: cutter.Copy,
+		Mode:    cutter.Centered,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return thumbnail, nil
 }
