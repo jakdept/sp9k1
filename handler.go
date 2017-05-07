@@ -200,6 +200,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// rewrite to just generate an Encoder, and use that later maybe instead?
 		w.Header().Set("Content-Type", "image/"+h.thumbExt)
 		switch h.thumbExt {
 		case "jpg":
@@ -237,7 +238,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h thumbnailHandler) cacheThumb(imageName string) (image.Image, error) {
-	img, format, err := h.openImage(fmt.Sprintf("%s/%s.%s", h.thumbs, imageName, h.thumbExt))
+	img, format, err := h.openImage(h.generateThumbPath(imageName))
 	if os.IsNotExist(err) || format != h.thumbExt {
 		img, _, err = h.openImage(fmt.Sprintf("%s/%s", h.thumbs, imageName))
 		if err != nil {
@@ -258,21 +259,8 @@ func (h thumbnailHandler) cacheThumb(imageName string) (image.Image, error) {
 	return img, nil
 }
 
-func (h thumbnailHandler) openImage(imageName string) (image.Image, string, error) {
-	path := filepath.Clean(imageName)
-	reader, err := os.Open(path)
-	if err != nil {
-		return nil, "", err
-	}
-	img, format, err := image.Decode(reader)
-	if err != nil {
-		return nil, "", err
-	}
-	return img, format, nil
-}
-
 func (h thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
-	out, err := os.Create(filepath.Join(h.raw, imageName))
+	out, err := os.Create(h.generateThumbPath(imageName))
 	if err != nil {
 		return err
 	}
@@ -292,7 +280,8 @@ func (h thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.
 func (h thumbnailHandler) generateThumbnail(rawImage image.Image) (image.Image, error) {
 	shrunk := resize.Resize(0, uint(h.y), rawImage, resize.MitchellNetravali)
 	thumbnail, err := cutter.Crop(shrunk, cutter.Config{
-		Height:  h.x,
+		Height:  h.y,
+		Width:   h.x,
 		Options: cutter.Copy,
 		Mode:    cutter.Centered,
 	})
@@ -300,4 +289,25 @@ func (h thumbnailHandler) generateThumbnail(rawImage image.Image) (image.Image, 
 		return nil, err
 	}
 	return thumbnail, nil
+}
+
+func (h thumbnailHandler) openImage(imageName string) (image.Image, string, error) {
+	path := filepath.Clean(imageName)
+	reader, err := os.Open(path)
+	if err != nil {
+		return nil, "", err
+	}
+	img, format, err := image.Decode(reader)
+	if err != nil {
+		return nil, "", err
+	}
+	return img, format, nil
+}
+
+func (h thumbnailHandler) generateThumbPath(imageName string) string {
+	return path.Clean(fmt.Sprintf("%s/%s.%s", h.thumbs, imageName, h.thumbExt))
+}
+
+func (h thumbnailHandler) generateRawPath(imageName string) string {
+	return path.Clean(fmt.Sprintf("%s/%s", h.raw, imageName))
 }

@@ -5,9 +5,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"html/template"
+	"image/png"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -384,4 +386,116 @@ func TestSplitHandler(t *testing.T) {
 
 		assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
 	}
+}
+
+func TestGenerateThumbnail(t *testing.T) {
+	testImages := []string{"accidentally_save_file.gif", "spooning_a_barret.png"}
+
+	h := thumbnailHandler{x: 100, y: 100}
+	buf := bytes.NewBuffer([]byte{})
+
+	for id, inputImage := range testImages {
+		img, _, err := h.openImage("testdata/" + inputImage)
+		if err != nil {
+			t.Log("#%d - failed to open test image [%s]: %s", id, inputImage, err)
+			t.Fail()
+			continue
+		}
+		thumb, err := h.generateThumbnail(img)
+		if err != nil {
+			t.Log("#%d - failed to generate thumbnail [%s]: %s", id, inputImage, err)
+			t.Fail()
+			continue
+		}
+		buf.Reset()
+		err = png.Encode(buf, thumb)
+		if err != nil {
+			t.Log("#%d - failed to encode thumbnail [%s]: %s", id, inputImage, err)
+			t.Fail()
+			continue
+		}
+
+		goldie.Assert(t, inputImage, buf.Bytes())
+	}
+}
+
+func TestGeneratePaths(t *testing.T) {
+	testData := []struct {
+		imageName string
+		rawPath   string
+		thumbPath string
+	}{
+		{
+			imageName: "accidentally_save_file.gif",
+			rawPath:   "testdata/accidentally_save_file.gif",
+			thumbPath: "output/accidentally_save_file.gif.jpg",
+		}, {
+			imageName: "blocked_us.png",
+			rawPath:   "testdata/blocked_us.png",
+			thumbPath: "output/blocked_us.png.jpg",
+		}, {
+			imageName: "carlton_pls.jpg",
+			rawPath:   "testdata/carlton_pls.jpg",
+			thumbPath: "output/carlton_pls.jpg.jpg",
+		}, {
+			imageName: "lemur_pudding_cups.jpg",
+			rawPath:   "testdata/lemur_pudding_cups.jpg",
+			thumbPath: "output/lemur_pudding_cups.jpg.jpg",
+		}, {
+			imageName: "spooning_a_barret.png",
+			rawPath:   "testdata/spooning_a_barret.png",
+			thumbPath: "output/spooning_a_barret.png.jpg",
+		}, {
+			imageName: "whats_in_the_case.gif",
+			rawPath:   "testdata/whats_in_the_case.gif",
+			thumbPath: "output/whats_in_the_case.gif.jpg",
+		},
+	}
+
+	h := thumbnailHandler{raw: "testdata", thumbs: "output", thumbExt: "jpg"}
+
+	for id, test := range testData {
+		assert.Equal(t, test.rawPath, h.generateRawPath(test.imageName), "#%d - wrong raw path", id)
+		assert.Equal(t, test.thumbPath, h.generateThumbPath(test.imageName), "#%d - wrong thumb path", id)
+	}
+}
+
+func TestCacheThumbnail(t *testing.T) {
+	testData := []struct {
+		imageName     string
+		md5           string
+		contentLength int
+	}{
+		{
+			imageName:     "accidentally_save_file.gif",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		}, {
+			imageName:     "blocked_us.png",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		}, {
+			imageName:     "carlton_pls.jpg",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		}, {
+			imageName:     "lemur_pudding_cups.jpg",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		}, {
+			imageName:     "spooning_a_barret.png",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		}, {
+			imageName:     "whats_in_the_case.gif",
+			md5:           "23115a2a2e7d25f86bfb09392986681d",
+			contentLength: 1503,
+		},
+	}
+
+	h := thumbnailHandler{x: 200, y: 200, thumbExt: "png"}
+
+	_ = testData
+	_ = h
+
 }
