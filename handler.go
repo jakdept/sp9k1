@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	_ "image/gif"
 	_ "image/jpeg"
@@ -177,8 +178,15 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func ThumbnailHandler(targetHeight, targetWidth int, rawImageDirectory, thumbnailDirectory string) http.Handler {
-	return thumbnailHandler{x: targetHeight, y: targetWidth, raw: rawImageDirectory, thumbs: thumbnailDirectory}
+func ThumbnailHandler(targetWidth, targetHeight int,
+	rawImageDirectory, thumbnailDirectory, thumbnailExtension string) http.Handler {
+	return thumbnailHandler{
+		x:        targetHeight,
+		y:        targetWidth,
+		raw:      rawImageDirectory,
+		thumbs:   thumbnailDirectory,
+		thumbExt: thumbnailExtension,
+	}
 }
 
 type thumbnailHandler struct {
@@ -190,57 +198,59 @@ type thumbnailHandler struct {
 }
 
 func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	f, err := os.Open(filepath.Clean(fmt.Sprintf("%s/%s.%s", h.thumbs, r.URL.Path, h.thumbExt)))
-	if os.IsNotExist(err) {
-		var img image.Image
-		img, err = h.cacheThumb(r.URL.Path)
+	f, err := os.Open(h.generateThumbPath(r.URL.Path))
+	if err == nil {
+		defer f.Close()
+
+		stat, err := f.Stat()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-			log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+			log.Printf("500 - could not stat file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 			return
 		}
 
-		// rewrite to just generate an Encoder, and use that later maybe instead?
 		w.Header().Set("Content-Type", "image/"+h.thumbExt)
-		switch h.thumbExt {
-		case "jpg":
-			jpeg.Encode(w, img, nil)
-			return
-		case "jpeg":
-			jpeg.Encode(w, img, nil)
-			return
-		case "png":
-			png.Encode(w, img)
-			return
-		default:
-			http.Error(w, fmt.Sprintf("could not respond with file; %s", r.URL.Path), http.StatusInternalServerError)
-			log.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
-			return
-		}
+		http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
+		return
+	}
 
-	} else if err != nil {
+	if !os.IsNotExist(err) {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
 		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
-	defer f.Close()
 
-	stat, err := f.Stat()
+	var img image.Image
+	img, err = h.loadThumbnail(h.trimThumbExt(r.URL.Path))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - could not stat file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
 
+	// rewrite to just generate an Encoder, and use that later maybe instead?
 	w.Header().Set("Content-Type", "image/"+h.thumbExt)
-	http.ServeContent(w, r, r.URL.Path, stat.ModTime(), f)
-	return
+	switch h.thumbExt {
+	case "jpg":
+		jpeg.Encode(w, img, nil)
+		return
+	case "jpeg":
+		jpeg.Encode(w, img, nil)
+		return
+	case "png":
+		png.Encode(w, img)
+		return
+	default:
+		http.Error(w, fmt.Sprintf("could not respond with file; %s", r.URL.Path), http.StatusInternalServerError)
+		log.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		return
+	}
 }
 
-func (h thumbnailHandler) cacheThumb(imageName string) (image.Image, error) {
+func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {
 	img, format, err := h.openImage(h.generateThumbPath(imageName))
 	if os.IsNotExist(err) || format != h.thumbExt {
-		img, _, err = h.openImage(fmt.Sprintf("%s/%s", h.thumbs, imageName))
+		img, _, err = h.openImage(h.generateRawPath(imageName))
 		if err != nil {
 			return nil, fmt.Errorf("could not open image [%s]: %s", imageName, err)
 		}
@@ -297,6 +307,7 @@ func (h thumbnailHandler) openImage(imageName string) (image.Image, string, erro
 	if err != nil {
 		return nil, "", err
 	}
+	defer reader.Close()
 	img, format, err := image.Decode(reader)
 	if err != nil {
 		return nil, "", err
@@ -310,4 +321,8 @@ func (h thumbnailHandler) generateThumbPath(imageName string) string {
 
 func (h thumbnailHandler) generateRawPath(imageName string) string {
 	return path.Clean(fmt.Sprintf("%s/%s", h.raw, imageName))
+}
+
+func (h thumbnailHandler) trimThumbExt(in string) string {
+	return path.Clean(strings.TrimSuffix(in, "."+h.thumbExt))
 }

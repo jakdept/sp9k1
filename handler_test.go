@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	_ "github.com/jakdept/sp9k1/statik"
@@ -397,20 +398,20 @@ func TestGenerateThumbnail(t *testing.T) {
 	for id, inputImage := range testImages {
 		img, _, err := h.openImage("testdata/" + inputImage)
 		if err != nil {
-			t.Log("#%d - failed to open test image [%s]: %s", id, inputImage, err)
+			t.Logf("#%d - failed to open test image [%s]: %s", id, inputImage, err)
 			t.Fail()
 			continue
 		}
 		thumb, err := h.generateThumbnail(img)
 		if err != nil {
-			t.Log("#%d - failed to generate thumbnail [%s]: %s", id, inputImage, err)
+			t.Logf("#%d - failed to generate thumbnail [%s]: %s", id, inputImage, err)
 			t.Fail()
 			continue
 		}
 		buf.Reset()
 		err = png.Encode(buf, thumb)
 		if err != nil {
-			t.Log("#%d - failed to encode thumbnail [%s]: %s", id, inputImage, err)
+			t.Logf("#%d - failed to encode thumbnail [%s]: %s", id, inputImage, err)
 			t.Fail()
 			continue
 		}
@@ -460,42 +461,154 @@ func TestGeneratePaths(t *testing.T) {
 	}
 }
 
-func TestCacheThumbnail(t *testing.T) {
+func TestLoadThumbnail(t *testing.T) {
 	testData := []struct {
-		imageName     string
-		md5           string
-		contentLength int
+		imageName string
+		size      int64
 	}{
 		{
-			imageName:     "accidentally_save_file.gif",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "accidentally_save_file.gif",
+			size:      17861,
 		}, {
-			imageName:     "blocked_us.png",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "blocked_us.png",
+			size:      44940,
 		}, {
-			imageName:     "carlton_pls.jpg",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "carlton_pls.jpg",
+			size:      22806,
 		}, {
-			imageName:     "lemur_pudding_cups.jpg",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "lemur_pudding_cups.jpg",
+			size:      72840,
 		}, {
-			imageName:     "spooning_a_barret.png",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "spooning_a_barret.png",
+			size:      47306,
 		}, {
-			imageName:     "whats_in_the_case.gif",
-			md5:           "23115a2a2e7d25f86bfb09392986681d",
-			contentLength: 1503,
+			imageName: "whats_in_the_case.gif",
+			size:      48763,
 		},
 	}
 
-	h := thumbnailHandler{x: 200, y: 200, thumbExt: "png"}
+	tempdir, err := ioutil.TempDir("", "sp9k1-")
+	if err != nil {
+		t.Fatalf("failed creating test directory: %s", err)
+	}
 
-	_ = testData
-	_ = h
+	h := thumbnailHandler{x: 200, y: 200, raw: "testdata", thumbExt: "png", thumbs: tempdir}
 
+	for id, test := range testData {
+		h.loadThumbnail(test.imageName)
+		info, err := os.Stat(h.generateThumbPath(test.imageName))
+		if err != nil {
+			t.Logf("#%d - failed to stat thumbnail [%s] tempdir [%s]: %s",
+				id, test.imageName, tempdir, err)
+			t.Fail()
+			continue
+		}
+		assert.Equal(t, test.size, info.Size(),
+			"#%d [%s] - size does not match - tempDir [%s]", id, test.size, tempdir)
+	}
+}
+
+func TestThumbnailHandler(t *testing.T) {
+	var testData = []struct {
+		uri           string
+		code          int
+		md5           string
+		contentLength int64
+		contentType   string
+	}{
+		{
+			uri:           "/accidentally_save_file.gif.png",
+			code:          200,
+			md5:           "6929ee1f5b86c6e5669334b34e8fea65",
+			contentLength: 3548,
+			contentType:   "text/plain; charset=utf-8",
+		}, {
+			uri:           "/blocked_us.png.png",
+			code:          200,
+			md5:           "b1cf11f4d2cda79f08a58383863346a7",
+			contentLength: 1868,
+			contentType:   "text/plain; charset=utf-8",
+		}, {
+			uri:           "/carlton_pls.jpg.png",
+			code:          200,
+			md5:           "c1b9a03d47a42720891989a5844e9e3c",
+			contentLength: 14173,
+			contentType:   "text/plain; charset=utf-8",
+		}, {
+			uri:           "/lemur_pudding_cups.jpg.png",
+			code:          200,
+			md5:           "3d025169b583ce5c3af13060440e2277",
+			contentLength: 8281,
+			contentType:   "text/plain; charset=utf-8",
+		}, {
+			uri:           "/spooning_a_barret.png.png",
+			code:          200,
+			md5:           "9676bd8257ddcd3aa6a4e50a6068a3f8",
+			contentLength: 5607,
+			contentType:   "text/html; charset=utf-8",
+		}, {
+			uri:           "/whats_in_the_case.gif.png",
+			code:          200,
+			md5:           "9676bd8257ddcd3aa6a4e50a6068a3f8",
+			contentLength: 5607,
+			contentType:   "text/html; charset=utf-8",
+		}, {
+			uri:           "/bad.target.png",
+			code:          404,
+			md5:           "",
+			contentLength: 0,
+			contentType:   "",
+		},
+	}
+
+	tempdir, err := ioutil.TempDir("", "sp9k1-")
+	if err != nil {
+		t.Fatalf("failed creating test directory: %s", err)
+	}
+
+	ts := httptest.NewServer(ThumbnailHandler(300, 250, "./testdata/", tempdir, "png"))
+	defer ts.Close()
+
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("failed to parse url: %s", err)
+	}
+
+	for testID, test := range testData {
+		for _, run := range []string{"a", "b"} {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				continue
+			}
+
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+
+			assert.Equal(t, test.code, res.StatusCode,
+				"#%d-%s [%s] tempdir [%s] - status code does not match: ", testID, run, test.uri, tempdir)
+			if test.code != 200 {
+				if res.StatusCode != test.code {
+					t.Logf("the response returned: \n%#v\n", res)
+				}
+				continue
+			}
+			// assert.Equal(t, test.contentLength, res.ContentLength,
+			// 	"#%d-%s [%s] tempdir [%s] - ContentLength does not match: ", testID, run, test.uri, tempdir)
+			// assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
+			// 	"#%d-%s [%s] tempdir [%s]- Content-Type does not match: ", testID, run, test.uri, tempdir)
+
+			// body, err := ioutil.ReadAll(res.Body)
+			// res.Body.Close()
+			// if err != nil {
+			// 	t.Error(err)
+			// 	continue
+			// }
+			// assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
+			// 	"#%d-%s [%s] tempdir [%s]- mismatched body returned: ", testID, run, test.uri, tempdir)
+		}
+	}
 }
