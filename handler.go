@@ -200,7 +200,7 @@ type thumbnailHandler struct {
 }
 
 func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	f, err := os.Open(h.generateThumbPath(r.URL.Path))
+	f, err := os.Open(h.generateThumbPath(h.trimThumbExt(r.URL.Path)))
 	if err == nil {
 		defer f.Close()
 
