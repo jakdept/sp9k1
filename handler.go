@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "image/gif"
 	_ "image/jpeg"
@@ -24,6 +25,7 @@ import (
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/nfnt/resize"
 	"github.com/oliamb/cutter"
+	"github.com/traherom/memstream"
 )
 
 // SplitHandler allows the routing of one handler at /, and another at all locations below /.
@@ -223,28 +225,29 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var img image.Image
 	img, err = h.loadThumbnail(h.trimThumbExt(r.URL.Path))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusNotFound)
 		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
 
+	buf := memstream.NewCapacity(1000000)
 	// rewrite to just generate an Encoder, and use that later maybe instead?
 	w.Header().Set("Content-Type", "image/"+h.thumbExt)
 	switch h.thumbExt {
 	case "jpg":
-		jpeg.Encode(w, img, nil)
-		return
+		jpeg.Encode(buf, img, nil)
 	case "jpeg":
-		jpeg.Encode(w, img, nil)
-		return
+		jpeg.Encode(buf, img, nil)
 	case "png":
-		png.Encode(w, img)
-		return
+		png.Encode(buf, img)
 	default:
 		http.Error(w, fmt.Sprintf("could not respond with file; %s", r.URL.Path), http.StatusInternalServerError)
 		log.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
+
+	buf.Rewind()
+	http.ServeContent(w, r, r.URL.Path, time.Now(), buf)
 }
 
 func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {

@@ -95,7 +95,6 @@ func TestInternalHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-
 		uri, err := url.Parse(test.uri)
 		if err != nil {
 			t.Errorf("bad URI path: [%s]", test.uri)
@@ -519,45 +518,63 @@ func TestThumbnailHandler(t *testing.T) {
 		{
 			uri:           "/accidentally_save_file.gif.png",
 			code:          200,
-			md5:           "6929ee1f5b86c6e5669334b34e8fea65",
-			contentLength: 3548,
-			contentType:   "text/plain; charset=utf-8",
+			md5:           "2a88b1a274788e0b5ca3dacc2cb0f155",
+			contentLength: 28730,
+			contentType:   "image/png",
 		}, {
 			uri:           "/blocked_us.png.png",
 			code:          200,
-			md5:           "b1cf11f4d2cda79f08a58383863346a7",
-			contentLength: 1868,
-			contentType:   "text/plain; charset=utf-8",
+			md5:           "3587ab6a9a857d2a91a6cefc7e8137ff",
+			contentLength: 87501,
+			contentType:   "image/png",
 		}, {
 			uri:           "/carlton_pls.jpg.png",
 			code:          200,
-			md5:           "c1b9a03d47a42720891989a5844e9e3c",
-			contentLength: 14173,
-			contentType:   "text/plain; charset=utf-8",
+			md5:           "87ae5045c1e3d3dddc5d90e1b2132a71",
+			contentLength: 46179,
+			contentType:   "image/png",
 		}, {
 			uri:           "/lemur_pudding_cups.jpg.png",
 			code:          200,
-			md5:           "3d025169b583ce5c3af13060440e2277",
-			contentLength: 8281,
-			contentType:   "text/plain; charset=utf-8",
+			md5:           "f7a933ca9e181fc1b321ab6101ea28b5",
+			contentLength: 129666,
+			contentType:   "image/png",
 		}, {
 			uri:           "/spooning_a_barret.png.png",
 			code:          200,
-			md5:           "9676bd8257ddcd3aa6a4e50a6068a3f8",
-			contentLength: 5607,
-			contentType:   "text/html; charset=utf-8",
+			md5:           "cbbfe8f880bfacda9a57e6a2270ede7b",
+			contentLength: 86604,
+			contentType:   "image/png",
 		}, {
 			uri:           "/whats_in_the_case.gif.png",
 			code:          200,
-			md5:           "9676bd8257ddcd3aa6a4e50a6068a3f8",
-			contentLength: 5607,
-			contentType:   "text/html; charset=utf-8",
+			md5:           "e87c0bd7b68f597e6a489fd12ce4fc6e",
+			contentLength: 95050,
+			contentType:   "image/png",
 		}, {
 			uri:           "/bad.target.png",
 			code:          404,
 			md5:           "",
 			contentLength: 0,
 			contentType:   "",
+		}, {
+			uri:           "/accidentally_save_file.gif.png",
+			code:          200,
+			md5:           "2a88b1a274788e0b5ca3dacc2cb0f155",
+			contentLength: 28730,
+			contentType:   "image/png",
+		}, {
+			uri:           "/blocked_us.png.png",
+			code:          200,
+			md5:           "3587ab6a9a857d2a91a6cefc7e8137ff",
+			contentLength: 87501,
+			contentType:   "image/png",
+		}, {
+			uri:           "/carlton_pls.jpg.png",
+			code:          200,
+			md5:           "87ae5045c1e3d3dddc5d90e1b2132a71",
+			contentLength: 46179,
+			contentType:   "image/png",
 		},
 	}
 
@@ -575,40 +592,38 @@ func TestThumbnailHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-		for _, run := range []string{"a", "b"} {
-			uri, err := url.Parse(test.uri)
-			if err != nil {
-				t.Errorf("bad URI path: [%s]", test.uri)
-				continue
-			}
-
-			res, err := http.Get(baseURL.ResolveReference(uri).String())
-			if err != nil {
-				t.Error(err)
-				continue
-			}
-
-			assert.Equal(t, test.code, res.StatusCode,
-				"#%d-%s [%s] tempdir [%s] - status code does not match: ", testID, run, test.uri, tempdir)
-			if test.code != 200 {
-				if res.StatusCode != test.code {
-					t.Logf("the response returned: \n%#v\n", res)
-				}
-				continue
-			}
-			// assert.Equal(t, test.contentLength, res.ContentLength,
-			// 	"#%d-%s [%s] tempdir [%s] - ContentLength does not match: ", testID, run, test.uri, tempdir)
-			// assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
-			// 	"#%d-%s [%s] tempdir [%s]- Content-Type does not match: ", testID, run, test.uri, tempdir)
-
-			// body, err := ioutil.ReadAll(res.Body)
-			// res.Body.Close()
-			// if err != nil {
-			// 	t.Error(err)
-			// 	continue
-			// }
-			// assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
-			// 	"#%d-%s [%s] tempdir [%s]- mismatched body returned: ", testID, run, test.uri, tempdir)
+		uri, err := url.Parse(test.uri)
+		if err != nil {
+			t.Errorf("bad URI path: [%s]", test.uri)
+			continue
 		}
+
+		res, err := http.Get(baseURL.ResolveReference(uri).String())
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		assert.Equal(t, test.code, res.StatusCode,
+			"#%d [%s] tempdir [%s] - status code does not match: ", testID, test.uri, tempdir)
+		if test.code != 200 {
+			if res.StatusCode != test.code {
+				t.Logf("the response returned: \n%#v\n", res)
+			}
+			continue
+		}
+		assert.Equal(t, test.contentLength, res.ContentLength,
+			"#%d [%s] tempdir [%s] - ContentLength does not match: ", testID, test.uri, tempdir)
+		assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
+			"#%d [%s] tempdir [%s]- Content-Type does not match: ", testID, test.uri, tempdir)
+
+		body, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
+			"#%d [%s] tempdir [%s]- mismatched body returned: ", testID, test.uri, tempdir)
 	}
 }
