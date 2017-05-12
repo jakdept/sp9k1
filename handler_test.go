@@ -624,3 +624,124 @@ func TestThumbnailHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestThumbnailHandlerJPG(t *testing.T) {
+	var testData = []struct {
+		uri           string
+		code          int
+		md5           string
+		contentLength int64
+		contentType   string
+	}{
+		{
+			uri:           "/accidentally_save_file.gif",
+			code:          200,
+			md5:           "9d4bdb89c5d8c7fa01aa0b9c48b7d496",
+			contentLength: 14030,
+			contentType:   "image/",
+		}, {
+			uri:           "/blocked_us.png",
+			code:          200,
+			md5:           "e046c572c9e279f52cddfdcdf9031f07",
+			contentLength: 13665,
+			contentType:   "image/",
+		}, {
+			uri:           "/carlton_pls.jpg",
+			code:          200,
+			md5:           "513cde10dba247c37cd302574a489a32",
+			contentLength: 6773,
+			contentType:   "image/",
+		}, {
+			uri:           "/lemur_pudding_cups.jpg",
+			code:          200,
+			md5:           "1a9b3b6f96e23d3651562580744bc344",
+			contentLength: 16739,
+			contentType:   "image/",
+		}, {
+			uri:           "/spooning_a_barret.png",
+			code:          200,
+			md5:           "56c7bf987beabac06de1c0374c25fddd",
+			contentLength: 12694,
+			contentType:   "image/",
+		}, {
+			uri:           "/whats_in_the_case.gif",
+			code:          200,
+			md5:           "30a78913609464fa2a22af0506af40bf",
+			contentLength: 6418,
+			contentType:   "image/",
+		}, {
+			uri:           "/bad.target.png",
+			code:          404,
+			md5:           "",
+			contentLength: 0,
+			contentType:   "",
+		}, {
+			uri:           "/accidentally_save_file.gif",
+			code:          200,
+			md5:           "9d4bdb89c5d8c7fa01aa0b9c48b7d496",
+			contentLength: 14030,
+			contentType:   "image/",
+		}, {
+			uri:           "/blocked_us.png",
+			code:          200,
+			md5:           "e046c572c9e279f52cddfdcdf9031f07",
+			contentLength: 13665,
+			contentType:   "image/",
+		}, {
+			uri:           "/carlton_pls.jpg",
+			code:          200,
+			md5:           "513cde10dba247c37cd302574a489a32",
+			contentLength: 6773,
+			contentType:   "image/",
+		},
+	}
+
+	for _, ext := range []string{"jpg", "jpeg"} {
+		tempdir, err := ioutil.TempDir("", "sp9k1-")
+		if err != nil {
+			t.Fatalf("failed creating test directory: %s", err)
+		}
+
+		ts := httptest.NewServer(ThumbnailHandler(300, 250, "./testdata/", tempdir, ext))
+		defer ts.Close()
+
+		baseURL, err := url.Parse(ts.URL)
+		if err != nil {
+			t.Fatalf("failed to parse url: %s", err)
+		}
+
+		for testID, test := range testData {
+			t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
+				uri, err := url.Parse(test.uri + "." + ext)
+				if err != nil {
+					t.Errorf("bad URI path: [%s]", test.uri)
+					return
+				}
+
+				res, err := http.Get(baseURL.ResolveReference(uri).String())
+				if err != nil {
+					t.Error(err)
+					return
+				}
+
+				assert.Equal(t, test.code, res.StatusCode, "status code does not match: ")
+				if test.code != 200 {
+					if res.StatusCode != test.code {
+						t.Logf("the response returned: \n%#v\n", res)
+					}
+					return
+				}
+				assert.Equal(t, test.contentLength, res.ContentLength, "ContentLength does not match: ")
+				assert.Equal(t, test.contentType+ext, res.Header.Get("Content-Type"), "Content-Type does not match: ")
+
+				body, err := ioutil.ReadAll(res.Body)
+				res.Body.Close()
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)), "mismatched body returned: ")
+			})
+		}
+	}
+}
