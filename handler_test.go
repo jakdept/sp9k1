@@ -95,39 +95,37 @@ func TestInternalHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-		uri, err := url.Parse(test.uri)
-		if err != nil {
-			t.Errorf("bad URI path: [%s]", test.uri)
-			continue
-		}
-
-		res, err := http.Get(baseURL.ResolveReference(uri).String())
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-
-		assert.Equal(t, test.code, res.StatusCode,
-			"#%d [%s] - status code does not match", testID, test.uri)
-		if test.code != 200 {
-			if res.StatusCode != test.code {
-				t.Logf("the response returned: \n%#v\n", res)
+		t.Run(fmt.Sprintf("TestInternalHandler #%d - [%s]", testID, test.uri), func(t *testing.T) {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
 			}
-			continue
-		}
-		assert.Equal(t, test.contentLength, res.ContentLength,
-			"#%d [%s] - ContentLength does not match", testID, test.uri)
-		assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
-			"#%d [%s] - Content-Type does not match", testID, test.uri)
 
-		body, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-		assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
-			"#%d [%s] - mismatched body returned", testID, test.uri)
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			assert.Equal(t, test.code, res.StatusCode, "status code does not match")
+			if test.code != 200 {
+				if res.StatusCode != test.code {
+					t.Logf("the response returned: \n%#v\n", res)
+				}
+				return
+			}
+			assert.Equal(t, test.contentLength, res.ContentLength, "ContentLength does not match")
+			assert.Equal(t, test.contentType, res.Header.Get("Content-Type"), "Content-Type does not match")
+
+			body, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)), "mismatched body returned")
+		})
 	}
 }
 
@@ -223,46 +221,46 @@ func TestContentTypeHandler(t *testing.T) {
 	ts := httptest.NewServer(ContentTypeHandler("./testdata/"))
 	defer ts.Close()
 
+	log.Printf("TestContentTypeHandler test listening on [%s]", ts.URL)
+
 	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatalf("failed to parse url: %s", err)
 	}
 
 	for testID, test := range testData {
-
-		uri, err := url.Parse(test.uri)
-		if err != nil {
-			t.Errorf("bad URI path: [%s]", test.uri)
-			continue
-		}
-
-		res, err := http.Get(baseURL.ResolveReference(uri).String())
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-
-		assert.Equal(t, test.code, res.StatusCode,
-			"#%d [%s] - status code does not match", testID, test.uri)
-		if test.code != 200 {
-			if res.StatusCode != test.code {
-				t.Logf("the response returned: \n%#v\n", res)
+		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s]", testID, test.uri), func(t *testing.T) {
+			// t.Parallel()
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
 			}
-			continue
-		}
-		assert.Equal(t, test.contentLength, res.ContentLength,
-			"#%d [%s] - ContentLength does not match", testID, test.uri)
-		assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
-			"#%d [%s] - Content-Type does not match", testID, test.uri)
 
-		body, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-		assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
-			"#%d [%s] - mismatched body returned", testID, test.uri)
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			assert.Equal(t, test.code, res.StatusCode, "status code does not match")
+			if test.code != 200 {
+				if res.StatusCode != test.code {
+					t.Logf("the response returned: \n%#v\n", res)
+				}
+				return
+			}
+			assert.Equal(t, test.contentLength, res.ContentLength, "ContentLength does not match")
+			assert.Equal(t, test.contentType, res.Header.Get("Content-Type"), "Content-Type does not match")
+
+			body, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)), "mismatched body returned")
+		})
 	}
 }
 
@@ -368,23 +366,24 @@ func TestSplitHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
+		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s]", testID, test.uri), func(t *testing.T) {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
+			}
 
-		uri, err := url.Parse(test.uri)
-		if err != nil {
-			t.Errorf("bad URI path: [%s]", test.uri)
-			continue
-		}
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if res.StatusCode == 200 {
+				res.Body.Close()
+			}
 
-		res, err := http.Get(baseURL.ResolveReference(uri).String())
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-		if res.StatusCode == 200 {
-			res.Body.Close()
-		}
-
-		assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
+			assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
+		})
 	}
 }
 
@@ -592,38 +591,36 @@ func TestThumbnailHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-		uri, err := url.Parse(test.uri)
-		if err != nil {
-			t.Errorf("bad URI path: [%s]", test.uri)
-			continue
-		}
-
-		res, err := http.Get(baseURL.ResolveReference(uri).String())
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-
-		assert.Equal(t, test.code, res.StatusCode,
-			"#%d [%s] tempdir [%s] - status code does not match: ", testID, test.uri, tempdir)
-		if test.code != 200 {
-			if res.StatusCode != test.code {
-				t.Logf("the response returned: \n%#v\n", res)
+		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
 			}
-			continue
-		}
-		assert.Equal(t, test.contentLength, res.ContentLength,
-			"#%d [%s] tempdir [%s] - ContentLength does not match: ", testID, test.uri, tempdir)
-		assert.Equal(t, test.contentType, res.Header.Get("Content-Type"),
-			"#%d [%s] tempdir [%s]- Content-Type does not match: ", testID, test.uri, tempdir)
 
-		body, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-		assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)),
-			"#%d [%s] tempdir [%s]- mismatched body returned: ", testID, test.uri, tempdir)
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			assert.Equal(t, test.code, res.StatusCode, "status code does not match: ")
+			if test.code != 200 {
+				if res.StatusCode != test.code {
+					t.Logf("the response returned: \n%#v\n", res)
+				}
+				return
+			}
+			assert.Equal(t, test.contentLength, res.ContentLength, "ContentLength does not match: ")
+			assert.Equal(t, test.contentType, res.Header.Get("Content-Type"), "Content-Type does not match: ")
+
+			body, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			assert.Equal(t, test.md5, fmt.Sprintf("%x", md5.Sum(body)), "mismatched body returned: ")
+		})
 	}
 }
