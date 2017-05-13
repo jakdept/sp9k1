@@ -118,7 +118,9 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case true:
 			data.Dirs = append(data.Dirs, each.Name())
 		default:
-			data.Files = append(data.Files, each.Name())
+			if !strings.HasPrefix(each.Name(), ".") {
+				data.Files = append(data.Files, each.Name())
+			}
 		}
 	}
 

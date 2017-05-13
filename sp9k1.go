@@ -16,7 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	templateFile, err := fs.Open("/page.html")
+	templateFile, err := fs.Open("/page.template")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,6 +32,10 @@ func main() {
 	}
 
 	basePath := "./"
+	thumbnailPath, err := ioutil.TempDir("", "thumbnailcache-")
+	if err != nil {
+		log.Fatalf("Could not create tempoary thumbnail directory - %s", err)
+	}
 
 	mux := http.NewServeMux()
 
@@ -42,6 +46,10 @@ func main() {
 	mux.Handle("/static/", http.StripPrefix("/static/", SplitHandler(
 		http.RedirectHandler("/", 302),
 		InternalHandler(fs))))
+
+	mux.Handle("/thumb/", http.StripPrefix("/thumb/", SplitHandler(
+		http.RedirectHandler("/", 302),
+		ThumbnailHandler(250, 300, basePath, thumbnailPath, "jpg"))))
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

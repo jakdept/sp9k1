@@ -25,7 +25,7 @@
         {{ range .Files }}
         <li>
           <a href="https://github.com/jakdept/sp9k1/" data-largesrc="/{{.}}" data-title="{{.}}" data-description="generated">
-            <img width="250px" height="250px" src="/{{.}}" alt="{{.}}" />
+            <img src="/thumb/{{.}}.jpg" alt="{{.}}" />
           </a>
         </li>
         {{ end }}
