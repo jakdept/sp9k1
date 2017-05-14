@@ -517,38 +517,38 @@ func TestThumbnailHandler(t *testing.T) {
 		{
 			uri:           "/accidentally_save_file.gif.png",
 			code:          200,
-			md5:           "2a88b1a274788e0b5ca3dacc2cb0f155",
-			contentLength: 28730,
+			md5:           "bc587c694204580315614011d6b702ce",
+			contentLength: 25162,
 			contentType:   "image/png",
 		}, {
 			uri:           "/blocked_us.png.png",
 			code:          200,
-			md5:           "3587ab6a9a857d2a91a6cefc7e8137ff",
-			contentLength: 87501,
+			md5:           "be0261c7ed6c869e3462f1688f040ab8",
+			contentLength: 66336,
 			contentType:   "image/png",
 		}, {
 			uri:           "/carlton_pls.jpg.png",
 			code:          200,
-			md5:           "87ae5045c1e3d3dddc5d90e1b2132a71",
-			contentLength: 46179,
+			md5:           "e2d15c65598dd54f0b72c118134344a3",
+			contentLength: 33345,
 			contentType:   "image/png",
 		}, {
 			uri:           "/lemur_pudding_cups.jpg.png",
 			code:          200,
-			md5:           "f7a933ca9e181fc1b321ab6101ea28b5",
-			contentLength: 129666,
+			md5:           "53070f5de5e3d2e44e6b4af461fad761",
+			contentLength: 125386,
 			contentType:   "image/png",
 		}, {
 			uri:           "/spooning_a_barret.png.png",
 			code:          200,
-			md5:           "cbbfe8f880bfacda9a57e6a2270ede7b",
-			contentLength: 86604,
+			md5:           "2f53597728f846ceb39f88bf27f44d4f",
+			contentLength: 71299,
 			contentType:   "image/png",
 		}, {
 			uri:           "/whats_in_the_case.gif.png",
 			code:          200,
-			md5:           "e87c0bd7b68f597e6a489fd12ce4fc6e",
-			contentLength: 95050,
+			md5:           "1990381bd41ea22983e1a806d3381afa",
+			contentLength: 96063,
 			contentType:   "image/png",
 		}, {
 			uri:           "/bad.target.png",
@@ -559,20 +559,20 @@ func TestThumbnailHandler(t *testing.T) {
 		}, {
 			uri:           "/accidentally_save_file.gif.png",
 			code:          200,
-			md5:           "2a88b1a274788e0b5ca3dacc2cb0f155",
-			contentLength: 28730,
+			md5:           "bc587c694204580315614011d6b702ce",
+			contentLength: 25162,
 			contentType:   "image/png",
 		}, {
 			uri:           "/blocked_us.png.png",
 			code:          200,
-			md5:           "3587ab6a9a857d2a91a6cefc7e8137ff",
-			contentLength: 87501,
+			md5:           "be0261c7ed6c869e3462f1688f040ab8",
+			contentLength: 66336,
 			contentType:   "image/png",
 		}, {
 			uri:           "/carlton_pls.jpg.png",
 			code:          200,
-			md5:           "87ae5045c1e3d3dddc5d90e1b2132a71",
-			contentLength: 46179,
+			md5:           "e2d15c65598dd54f0b72c118134344a3",
+			contentLength: 33345,
 			contentType:   "image/png",
 		},
 	}
@@ -591,7 +591,7 @@ func TestThumbnailHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestThumbnailHandler #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
 			uri, err := url.Parse(test.uri)
 			if err != nil {
 				t.Errorf("bad URI path: [%s]", test.uri)
@@ -636,38 +636,38 @@ func TestThumbnailHandlerJPG(t *testing.T) {
 		{
 			uri:           "/accidentally_save_file.gif",
 			code:          200,
-			md5:           "9d4bdb89c5d8c7fa01aa0b9c48b7d496",
-			contentLength: 14030,
+			md5:           "2aa9ba78ec27dc96a3f5603e9e8eb646",
+			contentLength: 12489,
 			contentType:   "image/",
 		}, {
 			uri:           "/blocked_us.png",
 			code:          200,
-			md5:           "e046c572c9e279f52cddfdcdf9031f07",
-			contentLength: 13665,
+			md5:           "2fc5189bea70182964bf9126bcb3f0be",
+			contentLength: 10887,
 			contentType:   "image/",
 		}, {
 			uri:           "/carlton_pls.jpg",
 			code:          200,
-			md5:           "513cde10dba247c37cd302574a489a32",
-			contentLength: 6773,
+			md5:           "950e11dcdbbe9e27781aed1e815ff83f",
+			contentLength: 5081,
 			contentType:   "image/",
 		}, {
 			uri:           "/lemur_pudding_cups.jpg",
 			code:          200,
-			md5:           "1a9b3b6f96e23d3651562580744bc344",
-			contentLength: 16739,
+			md5:           "b5a688f25e0c248a6b101467957fc989",
+			contentLength: 17019,
 			contentType:   "image/",
 		}, {
 			uri:           "/spooning_a_barret.png",
 			code:          200,
-			md5:           "56c7bf987beabac06de1c0374c25fddd",
-			contentLength: 12694,
+			md5:           "b62b31ec6cfc5fd85dec71a3592373a8",
+			contentLength: 10705,
 			contentType:   "image/",
 		}, {
 			uri:           "/whats_in_the_case.gif",
 			code:          200,
-			md5:           "30a78913609464fa2a22af0506af40bf",
-			contentLength: 6418,
+			md5:           "806a2539113d46547dbc0fe779e5c4f3",
+			contentLength: 7574,
 			contentType:   "image/",
 		}, {
 			uri:           "/bad.target.png",
@@ -678,20 +678,20 @@ func TestThumbnailHandlerJPG(t *testing.T) {
 		}, {
 			uri:           "/accidentally_save_file.gif",
 			code:          200,
-			md5:           "9d4bdb89c5d8c7fa01aa0b9c48b7d496",
-			contentLength: 14030,
+			md5:           "2aa9ba78ec27dc96a3f5603e9e8eb646",
+			contentLength: 12489,
 			contentType:   "image/",
 		}, {
 			uri:           "/blocked_us.png",
 			code:          200,
-			md5:           "e046c572c9e279f52cddfdcdf9031f07",
-			contentLength: 13665,
+			md5:           "2fc5189bea70182964bf9126bcb3f0be",
+			contentLength: 10887,
 			contentType:   "image/",
 		}, {
 			uri:           "/carlton_pls.jpg",
 			code:          200,
-			md5:           "513cde10dba247c37cd302574a489a32",
-			contentLength: 6773,
+			md5:           "950e11dcdbbe9e27781aed1e815ff83f",
+			contentLength: 5081,
 			contentType:   "image/",
 		},
 	}
@@ -711,7 +711,7 @@ func TestThumbnailHandlerJPG(t *testing.T) {
 		}
 
 		for testID, test := range testData {
-			t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
+			t.Run(fmt.Sprintf("TestThumbnailHandler[%s] #%d - [%s] - [tempdir: %s]", ext, testID, test.uri, tempdir), func(t *testing.T) {
 				uri, err := url.Parse(test.uri + "." + ext)
 				if err != nil {
 					t.Errorf("bad URI path: [%s]", test.uri)

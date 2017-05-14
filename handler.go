@@ -185,8 +185,8 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func ThumbnailHandler(targetWidth, targetHeight int,
 	rawImageDirectory, thumbnailDirectory, thumbnailExtension string) http.Handler {
 	return thumbnailHandler{
-		x:        targetHeight,
-		y:        targetWidth,
+		x:        targetWidth,
+		y:        targetHeight,
 		raw:      rawImageDirectory,
 		thumbs:   thumbnailDirectory,
 		thumbExt: thumbnailExtension,
