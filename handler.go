@@ -47,18 +47,19 @@ func (p splitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // InternalHandler serves a static, in memory filesystem..
-func InternalHandler(fs http.FileSystem) http.Handler {
-	return internalHandler{handler: http.FileServer(fs)}
+func InternalHandler(logger *log.Logger, fs http.FileSystem) http.Handler {
+	return internalHandler{handler: http.FileServer(fs), l: logger}
 }
 
 type internalHandler struct {
 	handler http.Handler
+	l       *log.Logger
 }
 
 func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if path.Ext(r.URL.Path) == ".template" {
 		http.Error(w, fmt.Sprintf("template requested, blocked: %s", r.URL.Path), http.StatusForbidden)
-		log.Printf("403 - error responding: %s", r.URL.Path)
+		c.l.Printf("403 - error responding: %s", r.URL.Path)
 		return
 	}
 
@@ -67,8 +68,8 @@ func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // IndexHandler lists all files in a directory, and passes them to template execution to build a directory listing.
-func IndexHandler(basePath string, templ *template.Template) http.Handler {
-	return indexHandler{basePath, templ}
+func IndexHandler(logger *log.Logger, basePath string, templ *template.Template) http.Handler {
+	return indexHandler{basePath: basePath, templ: templ, l: logger}
 }
 
 type IndexData struct {
@@ -78,6 +79,7 @@ type IndexData struct {
 }
 
 type indexHandler struct {
+	l        *log.Logger
 	basePath string
 	templ    *template.Template
 }
@@ -86,27 +88,27 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(filepath.Join(c.basePath, r.URL.Path))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("not found: %s", r.URL.Path), http.StatusNotFound)
-		log.Printf("404 - could not find file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("404 - could not find file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
 	stat, err := f.Stat()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read target: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("500 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
 	if !stat.IsDir() {
 		http.Error(w, fmt.Sprintf("cannot read target: %s", r.URL.Path), http.StatusForbidden)
-		log.Printf("403 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("403 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
 	contents, err := f.Readdir(0)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read directory: %s", r.URL.Path), http.StatusForbidden)
-		log.Printf("403 - could not read file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("403 - could not read file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
@@ -128,19 +130,20 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = c.templ.Execute(w, data)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error building response: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - error responding: %s", err)
+		c.l.Printf("500 - error responding: %s", err)
 		return
 	}
 }
 
 // ContentTypeHandler serves a given file back to the requester, and determines content type by algorithm only.
 // It does not use the file's extension to determine the content type.
-func ContentTypeHandler(basePath string) http.Handler {
-	return contentTypeHandler{basePath}
+func ContentTypeHandler(logger *log.Logger, basePath string) http.Handler {
+	return contentTypeHandler{basePath: basePath, l: logger}
 }
 
 type contentTypeHandler struct {
 	basePath string
+	l        *log.Logger
 }
 
 // contentTypeHandler.ServeHTTP satasifies the Handler interface.
@@ -148,7 +151,7 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f, err := os.Open(filepath.Join(c.basePath, r.URL.Path))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("not found: %s", r.URL.Path), http.StatusNotFound)
-		log.Printf("404 - could not open file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("404 - could not open file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 	defer f.Close()
@@ -156,7 +159,7 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	stat, err := f.Stat()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("500 - could not stat file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
@@ -165,14 +168,14 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, err = f.Read(chunk)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - could not read from file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("500 - could not read from file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
 	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - could not seek within file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
+		c.l.Printf("500 - could not seek within file: %s - %s", filepath.Join(c.basePath, r.URL.Path), err)
 		return
 	}
 
@@ -182,7 +185,7 @@ func (c contentTypeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func ThumbnailHandler(targetWidth, targetHeight int,
+func ThumbnailHandler(logger *log.Logger, targetWidth, targetHeight int,
 	rawImageDirectory, thumbnailDirectory, thumbnailExtension string) http.Handler {
 	return thumbnailHandler{
 		x:        targetWidth,
@@ -190,6 +193,7 @@ func ThumbnailHandler(targetWidth, targetHeight int,
 		raw:      rawImageDirectory,
 		thumbs:   thumbnailDirectory,
 		thumbExt: thumbnailExtension,
+		l:        logger,
 	}
 }
 
@@ -199,6 +203,7 @@ type thumbnailHandler struct {
 	raw      string
 	thumbs   string
 	thumbExt string
+	l        *log.Logger
 }
 
 func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -209,7 +214,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		stat, err := f.Stat()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-			log.Printf("500 - could not stat file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+			h.l.Printf("500 - could not stat file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 			return
 		}
 
@@ -220,7 +225,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !os.IsNotExist(err) {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		h.l.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
 
@@ -228,7 +233,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	img, err = h.loadThumbnail(h.trimThumbExt(r.URL.Path))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusNotFound)
-		log.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		h.l.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
 
@@ -244,7 +249,7 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		png.Encode(buf, img)
 	default:
 		http.Error(w, fmt.Sprintf("could not respond with file; %s", r.URL.Path), http.StatusInternalServerError)
-		log.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
+		h.l.Printf("500 - error pushing thumbnail: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
 		return
 	}
 

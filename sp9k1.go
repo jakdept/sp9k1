@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/rakyll/statik/fs"
 )
@@ -37,19 +38,21 @@ func main() {
 		log.Fatalf("Could not create tempoary thumbnail directory - %s", err)
 	}
 
+	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/", SplitHandler(
-		IndexHandler(basePath, templ),
-		ContentTypeHandler(basePath)))
+		IndexHandler(logger, basePath, templ),
+		ContentTypeHandler(logger, basePath)))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", SplitHandler(
 		http.RedirectHandler("/", 302),
-		InternalHandler(fs))))
+		InternalHandler(logger, fs))))
 
 	mux.Handle("/thumb/", http.StripPrefix("/thumb/", SplitHandler(
 		http.RedirectHandler("/", 302),
-		ThumbnailHandler(250, 300, basePath, thumbnailPath, "jpg"))))
+		ThumbnailHandler(logger, 250, 300, basePath, thumbnailPath, "jpg"))))
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
