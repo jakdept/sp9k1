@@ -86,7 +86,9 @@ func TestInternalHandler(t *testing.T) {
 			contentType:   "text/html; charset=utf-8",
 		},
 	}
-	ts := httptest.NewServer(InternalHandler(testFS))
+
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(InternalHandler(logger, testFS))
 	defer ts.Close()
 
 	baseURL, err := url.Parse(ts.URL)
@@ -218,10 +220,10 @@ func TestContentTypeHandler(t *testing.T) {
 			contentType:   "image/gif",
 		},
 	}
-	ts := httptest.NewServer(ContentTypeHandler("./testdata/"))
-	defer ts.Close()
 
-	log.Printf("TestContentTypeHandler test listening on [%s]", ts.URL)
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(ContentTypeHandler(logger, "./testdata/"))
+	defer ts.Close()
 
 	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
@@ -288,7 +290,8 @@ func TestIndexHandler_successful(t *testing.T) {
 
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
-	ts := httptest.NewServer(IndexHandler("testdata", testTempl))
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -310,7 +313,8 @@ func TestIndexHandler_badpath(t *testing.T) {
 	templateString := ""
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
-	ts := httptest.NewServer(IndexHandler("not-a-folder", testTempl))
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(IndexHandler(logger, "not-a-folder", testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -326,7 +330,8 @@ func TestIndexHandler_badtemplate(t *testing.T) {
 	templateString := "{{ .ValueNotPresent }}"
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
-	ts := httptest.NewServer(IndexHandler("testdata", testTempl))
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -582,7 +587,8 @@ func TestThumbnailHandler(t *testing.T) {
 		t.Fatalf("failed creating test directory: %s", err)
 	}
 
-	ts := httptest.NewServer(ThumbnailHandler(300, 250, "./testdata/", tempdir, "png"))
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(ThumbnailHandler(logger, 300, 250, "./testdata/", tempdir, "png"))
 	defer ts.Close()
 
 	baseURL, err := url.Parse(ts.URL)
@@ -591,7 +597,7 @@ func TestThumbnailHandler(t *testing.T) {
 	}
 
 	for testID, test := range testData {
-		t.Run(fmt.Sprintf("TestThumbnailHandler #%d - [%s] - [tempdir: %s]", testID, test.uri, tempdir), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestThumbnailHandler-#%d[%s][tempdir:%s]", testID, test.uri, tempdir), func(t *testing.T) {
 			uri, err := url.Parse(test.uri)
 			if err != nil {
 				t.Errorf("bad URI path: [%s]", test.uri)
@@ -702,7 +708,8 @@ func TestThumbnailHandlerJPG(t *testing.T) {
 			t.Fatalf("failed creating test directory: %s", err)
 		}
 
-		ts := httptest.NewServer(ThumbnailHandler(300, 250, "./testdata/", tempdir, ext))
+		logger := log.New(ioutil.Discard, "", 0)
+		ts := httptest.NewServer(ThumbnailHandler(logger, 300, 250, "./testdata/", tempdir, ext))
 		defer ts.Close()
 
 		baseURL, err := url.Parse(ts.URL)
@@ -711,7 +718,7 @@ func TestThumbnailHandlerJPG(t *testing.T) {
 		}
 
 		for testID, test := range testData {
-			t.Run(fmt.Sprintf("TestThumbnailHandler[%s] #%d - [%s] - [tempdir: %s]", ext, testID, test.uri, tempdir), func(t *testing.T) {
+			t.Run(fmt.Sprintf("TestThumbnailHandler[%s]-#%d-[%s]-[tempdir:%s]", ext, testID, test.uri, tempdir), func(t *testing.T) {
 				uri, err := url.Parse(test.uri + "." + ext)
 				if err != nil {
 					t.Errorf("bad URI path: [%s]", test.uri)
