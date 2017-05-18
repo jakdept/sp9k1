@@ -52,7 +52,7 @@ func main() {
 
 	mux.Handle("/thumb/", http.StripPrefix("/thumb/", SplitHandler(
 		http.RedirectHandler("/", 302),
-		ThumbnailHandler(logger, 250, 300, basePath, thumbnailPath, "jpg"))))
+		ThumbnailHandler(logger, 310, 200, basePath, thumbnailPath, "jpg"))))
 
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
