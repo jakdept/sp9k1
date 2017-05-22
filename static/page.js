@@ -17,15 +17,17 @@ function open(target) {
   $(".preview-pane a img").attr("src", target.data("original"));
   target.addClass("image-card-selected");
 
-  var newImg = new Image();
-  newImg.src = target.data("original");
+  bottomOffset = $("#preview-pane-container").height() + 10;
 
-  imageHeight = newImg.height;
-  if (imageHeight < 350) {
-    imageHeight = 350;
-  }
-  bottomOffset = imageHeight + 80 + "px";
-  console.log(bottomOffset)
+  // var newImg = new Image();
+  // newImg.src = target.data("original");
+
+  // imageHeight = newImg.height;
+  // if (imageHeight < 350) {
+  //   imageHeight = 350;
+  // }
+  // bottomOffset = imageHeight + 80 + "px";
+  // console.log(bottomOffset)
 
   target.animate({ marginBottom: bottomOffset }, 200);
   setTimeout(function () {
