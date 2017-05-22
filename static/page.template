@@ -24,22 +24,22 @@
         <!-- Navigation. We hide it in small screens. -->
       </div>
     </header>
-    <!--<div class="mdl-layout__drawer">
+    {{ with .Dirs }}
+    <div class="mdl-layout__drawer">
       <span class="mdl-layout-title">Title</span>
       <nav class="mdl-navigation">
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
+        {{ range . }}
+        <a class="mdl-navigation__link" href="/{{.}}/">{{.}}</a>
+        {{ end }}
       </nav>
-    </div>-->
+    </div>
+    {{ end }}
     <main class="mdl-layout__content">
 
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="/{{.}}">
-        {{end}}
+        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="/{{.}}"> {{end}}
 
       </div>
       <div id="preview-pane-container">
