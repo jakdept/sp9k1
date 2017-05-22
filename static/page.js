@@ -14,11 +14,11 @@ function open(target) {
   // add 20 px for the padding offset, remove 64 for the header row
   newTop = target.position().top + target.height() + 20 + "px";
   $("#preview-pane-container").css({ top: newTop });
-  $(".preview-pane a img").attr("src", target.attr("src"));
+  $(".preview-pane a img").attr("src", target.data("original"));
   target.addClass("image-card-selected");
 
   var newImg = new Image();
-  newImg.src = target.attr("src");
+  newImg.src = target.data("original");
 
   imageHeight = newImg.height;
   if (imageHeight < 350) {

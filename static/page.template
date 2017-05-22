@@ -38,14 +38,14 @@
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="{{.}}.jpg">
+        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="/{{.}}">
         {{end}}
 
       </div>
       <div id="preview-pane-container">
         <div class="preview-pane">
-          <a href="../sample_images/lemur_pudding_cups.jpg">
-            <img src="../sample_images/lemur_pudding_cups.jpg">
+          <a>
+            <img>
           </a>
         </div>
 
@@ -55,8 +55,7 @@
           </div>
           <div class="preview-pane-control-stack preview-pane-control-buttons">
             <!-- Raised button -->
-            <a href="../sample_images/lemur_pudding_cups.jpg">
-            ../sample_images/lemur_pudding_cups.jpg
+            <a>
             </a>
             <button class="mdl-button mdl-js-button mdl-button--raised">
               Image
