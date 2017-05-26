@@ -1,58 +1,40 @@
 function close() {
-  console.log("closing");
-  if ($(".image-card-selected").length) {
-    $("#preview-pane-container").hide(100, function () {
-      $(".image-card-selected").animate({ marginBottom: "10px" }, 200);
-      $(".image-card-selected").removeClass("image-card-selected");
-    });
-  }
+  // $(".preview-container").hide();
+  document.getElementById("preview-container").style.display = "none";
 }
 
 function open(target) {
-  console.log("opening")
-
-  // add 20 px for the padding offset, remove 64 for the header row
-  newTop = target.position().top + target.height() + 20 + "px";
-  $("#preview-pane-container").css({ top: newTop });
-  $(".preview-pane a img").attr("src", target.data("original"));
-  target.addClass("image-card-selected");
-
-  bottomOffset = $("#preview-pane-container").height() + 10;
-
-  // var newImg = new Image();
-  // newImg.src = target.data("original");
-
-  // imageHeight = newImg.height;
-  // if (imageHeight < 350) {
-  //   imageHeight = 350;
-  // }
-  // bottomOffset = imageHeight + 80 + "px";
-  // console.log(bottomOffset)
-
-  target.animate({ marginBottom: bottomOffset }, 200);
-  setTimeout(function () {
-    $("#preview-pane-container").show(100);
-  }, 100);
-}
-
-function imageClick(target) {
-  close();
-  // if you run the full close it takes 400 ms(ish)
-  // first 200ms will leaaad to the thing being closed then opened
-  // second 200ms will give the improper position
-  setTimeout(function () {
-    open(target);
-  }, 600)
+  console.log("opening an image");
+  document.getElementById("preview-pane").src = target.getAttribute("data-original");
+  document.getElementById("preview-caption").innerHTML = target.alt;
+  document.getElementById("preview-container").style.display = "block";
+  // $("#preview-container").show(0);
 }
 
 $(document).ready(function () {
 
-  $(".preview-pane-close-button ").on("click", close);
+  document.getElementById("preview-close").onclick = close;
+  // imageCards = document.getElementsByClassName("image-card");
+  // for (var i = 0; i < imageCards.length; i++) {
+  //   imageCards[i].onflick = function() {
+  //     console.log("clicked an image")
+  //     open(this);
+  //   };
+  // }
+
   $(".image-card").on("click", function () {
-    imageClick($(this));
+    console.log("clicked an image");
+    open(this);
   });
 
-  $("#preview-pane-container").hide(0);
+  // $("#preview-pane").hide(0);
+  // $("#preview-container").hide(0);
 
   $(window).resize(close)
+  $(document).keyup(function (e) {
+    if (e.keyCode == 27) {
+      // keycode 27 is escape
+      close();
+    }
+  });
 });

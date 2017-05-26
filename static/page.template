@@ -39,37 +39,16 @@
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="/{{.}}"> {{end}}
+        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg"
+          data-original="/{{.}}" alt="{{.}}">
+        {{end}}
 
       </div>
-      <div id="preview-pane-container">
-        <div class="preview-pane">
-          <a>
-            <img>
-          </a>
-        </div>
-
-        <div id="preview-pane-control">
-          <div class="preview-pane-control-stack">
-            <div class="icon material-icons preview-icon preview-pane-close-button" style="float: right;">close</div>
-          </div>
-          <div class="preview-pane-control-stack preview-pane-control-buttons">
-            <!-- Raised button -->
-            <a>
-            </a>
-            <button class="mdl-button mdl-js-button mdl-button--raised">
-              Image
-            </button>
-            <button class="mdl-button mdl-js-button mdl-button--raised preview-pane-close-button">
-              Image
-            </button>
-          </div>
-
-        </div>
-        <!-- preview pane controls -->
-
+      <div id="preview-container">
+        <i id="preview-close" class="material-icons">close</i>
+        <img id="preview-pane">
+        <div id="preview-caption"></div>
       </div>
-      <!--preview pane container -->
 
     </main>
   </div>
