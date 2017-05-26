@@ -51,9 +51,7 @@
 
     #preview-pane {
       margin: auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      display: block;
       width: 80%;
       max-width: 700px;
     }
