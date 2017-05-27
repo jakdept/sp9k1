@@ -1,19 +1,21 @@
 function close() {
   // $(".preview-container").hide();
   document.getElementById("preview-container").style.display = "none";
+  $(".image-container").removeClass("blur");
 }
 
 function open(target) {
   console.log("opening an image");
   document.getElementById("preview-pane").src = target.getAttribute("data-original");
   document.getElementById("preview-caption").innerHTML = target.alt;
-  document.getElementById("preview-container").style.display = "block";
+  document.getElementById("preview-container").style.display = "flex";
+  $(".image-container").addClass("blur");
   // $("#preview-container").show(0);
 }
 
 $(document).ready(function () {
 
-  document.getElementById("preview-close").onclick = close;
+  document.getElementById("preview-container").onclick = close;
   // imageCards = document.getElementsByClassName("image-card");
   // for (var i = 0; i < imageCards.length; i++) {
   //   imageCards[i].onflick = function() {
