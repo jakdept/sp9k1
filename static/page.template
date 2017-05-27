@@ -45,7 +45,6 @@
 
       </div>
       <div id="preview-container">
-        <i id="preview-close" class="material-icons">close</i>
         <img id="preview-pane">
         <div id="preview-caption"></div>
       </div>
