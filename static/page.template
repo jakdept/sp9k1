@@ -1,10 +1,10 @@
 <html>
 
 <head>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
-  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="/static/material-icons.css">
+  <link rel="stylesheet" href="/static/material.min.css">
+  <script defer src="/static/material.min.js"></script>
+  <script src="/static/jquery.min.js"></script>
   <link rel="stylesheet" href="/static/page.css">
   <script src="/static/page.js"></script>
 
@@ -24,53 +24,30 @@
         <!-- Navigation. We hide it in small screens. -->
       </div>
     </header>
-    <!--<div class="mdl-layout__drawer">
+    {{ with .Dirs }}
+    <div class="mdl-layout__drawer">
       <span class="mdl-layout-title">Title</span>
       <nav class="mdl-navigation">
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
-        <a class="mdl-navigation__link" href="">Link</a>
+        {{ range . }}
+        <a class="mdl-navigation__link" href="/{{.}}/">{{.}}</a>
+        {{ end }}
       </nav>
-    </div>-->
+    </div>
+    {{ end }}
     <main class="mdl-layout__content">
 
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg" data-original="{{.}}.jpg">
+        <img class="image-card mdl-shadow--2dp" src="/thumb/{{.}}.jpg"
+          data-original="/{{.}}" alt="{{.}}">
         {{end}}
 
       </div>
-      <div id="preview-pane-container">
-        <div class="preview-pane">
-          <a href="../sample_images/lemur_pudding_cups.jpg">
-            <img src="../sample_images/lemur_pudding_cups.jpg">
-          </a>
-        </div>
-
-        <div id="preview-pane-control">
-          <div class="preview-pane-control-stack">
-            <div class="icon material-icons preview-icon preview-pane-close-button" style="float: right;">close</div>
-          </div>
-          <div class="preview-pane-control-stack preview-pane-control-buttons">
-            <!-- Raised button -->
-            <a href="../sample_images/lemur_pudding_cups.jpg">
-            ../sample_images/lemur_pudding_cups.jpg
-            </a>
-            <button class="mdl-button mdl-js-button mdl-button--raised">
-              Image
-            </button>
-            <button class="mdl-button mdl-js-button mdl-button--raised preview-pane-close-button">
-              Image
-            </button>
-          </div>
-
-        </div>
-        <!-- preview pane controls -->
-
+      <div id="preview-container">
+        <img id="preview-pane">
+        <div id="preview-caption"></div>
       </div>
-      <!--preview pane container -->
 
     </main>
   </div>
