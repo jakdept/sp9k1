@@ -156,8 +156,10 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, each := range contents {
 		if !each.IsDir() {
+			// suppress directories
 			if !strings.HasPrefix(each.Name(), ".") {
-				data.Files = append(data.Files, each.Name())
+				// suppress hidden files
+				data.Files = append(data.Files, path.Join(r.URL.Path, each.Name()))
 			}
 		}
 	}
