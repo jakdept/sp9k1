@@ -18,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jakdept/dir"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
 	"github.com/sebdah/goldie"
@@ -32,6 +33,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load statik fs, aborting tests: %s", err)
 	}
+	goldie.FixtureDir = "testdata/fixtures"
 }
 
 func TestInternalHandler(t *testing.T) {
@@ -366,6 +368,56 @@ func TestSplitHandler(t *testing.T) {
 
 	// setup a handler that returns one thing on the main path, and another on other paths
 	ts := httptest.NewServer(SplitHandler(foundHandler(), http.NotFoundHandler()))
+	defer ts.Close()
+
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("failed to parse url: %s", err)
+	}
+
+	for testID, test := range testData {
+		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s]", testID, test.uri), func(t *testing.T) {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
+			}
+
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if res.StatusCode == 200 {
+				res.Body.Close()
+			}
+
+			assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
+		})
+	}
+}
+
+func TestDirSplitHandler(t *testing.T) {
+	testData := []struct {
+		uri  string
+		code int
+	}{
+		{uri: "/", code: 200},
+		{uri: "/edat", code: 200},
+		{uri: "/jim", code: 200},
+		{uri: "/taes", code: 200},
+		{uri: "", code: 200},
+		{uri: "./", code: 200},
+		{uri: "/other", code: 404},
+		{uri: "bad/url", code: 404},
+	}
+
+	// setup a handler that returns one thing on the main path, and another on other paths
+	tracker, err := dir.Watch("testdata/sample_images/")
+	if err != nil {
+		log.Fatalf("failed to watch directory testdata/sample_images/ : %v", err)
+	}
+	ts := httptest.NewServer(DirSplitHandler(tracker, foundHandler(), http.NotFoundHandler()))
 	defer ts.Close()
 
 	baseURL, err := url.Parse(ts.URL)

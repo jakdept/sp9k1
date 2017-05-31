@@ -22,6 +22,7 @@ import (
 	"image/jpeg"
 	"image/png"
 
+	"github.com/jakdept/dir"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/nfnt/resize"
 	"github.com/oliamb/cutter"
@@ -43,6 +44,24 @@ func (p splitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.bare.ServeHTTP(w, r)
 	} else {
 		p.more.ServeHTTP(w, r)
+	}
+}
+
+func DirSplitHandler(tracker *dir.Tracker, folder, other http.Handler) http.Handler {
+	return dirSplitHandler{dir: tracker, folder: folder, other: other}
+}
+
+type dirSplitHandler struct {
+	dir    *dir.Tracker
+	folder http.Handler
+	other  http.Handler
+}
+
+func (h dirSplitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.dir.In(path.Clean(r.URL.Path)) {
+		h.folder.ServeHTTP(w, r)
+	} else {
+		h.other.ServeHTTP(w, r)
 	}
 }
 
