@@ -413,7 +413,8 @@ func TestDirSplitHandler(t *testing.T) {
 
 	// setup a handler that returns one thing on the main path, and another on other paths
 	done := make(chan struct{})
-	ts := httptest.NewServer(DirSplitHandler("testdata/sample_images", done,
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(DirSplitHandler(logger, "testdata/sample_images", done,
 		foundHandler(), http.NotFoundHandler()))
 	defer ts.Close()
 	defer close(done)
