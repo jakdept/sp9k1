@@ -29,7 +29,10 @@
       <span class="mdl-layout-title">Title</span>
       <nav class="mdl-navigation">
         {{ range . }}
-        <a class="mdl-navigation__link" href="/{{.}}/">{{.}}</a>
+        <a class="mdl-navigation__link" href="{{.}}">
+          <i class="material-icons">folder</i>
+          {{- . -}}
+        </a>
         {{ end }}
       </nav>
     </div>
