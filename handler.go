@@ -47,7 +47,16 @@ func (p splitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DirSplitHandler(tracker *dir.Tracker, folder, other http.Handler) http.Handler {
+func DirSplitHandler(basepath string, done <-chan struct{}, folder, other http.Handler) http.Handler {
+	tracker, err := dir.Watch(basepath)
+	if err != nil {
+		log.Fatalf("failed to watch directory [%s] - %v", basepath, err)
+	}
+	go func() {
+		<-done
+		tracker.Close()
+	}()
+
 	return dirSplitHandler{dir: tracker, folder: folder, other: other}
 }
 

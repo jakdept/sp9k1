@@ -18,7 +18,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jakdept/dir"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
 	"github.com/sebdah/goldie"
@@ -413,12 +412,11 @@ func TestDirSplitHandler(t *testing.T) {
 	}
 
 	// setup a handler that returns one thing on the main path, and another on other paths
-	tracker, err := dir.Watch("testdata/sample_images/")
-	if err != nil {
-		log.Fatalf("failed to watch directory testdata/sample_images/ : %v", err)
-	}
-	ts := httptest.NewServer(DirSplitHandler(tracker, foundHandler(), http.NotFoundHandler()))
+	done := make(chan struct{})
+	ts := httptest.NewServer(DirSplitHandler("testdata/sample_images", done,
+		foundHandler(), http.NotFoundHandler()))
 	defer ts.Close()
+	defer close(done)
 
 	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
