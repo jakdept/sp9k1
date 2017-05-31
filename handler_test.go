@@ -272,30 +272,29 @@ func TestContentTypeHandler(t *testing.T) {
 
 func TestIndexHandler_successful(t *testing.T) {
 	templateString := `{
-	"all":{
-	{{- range $index, $value := .All -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
-	},
 	"files":{
-	{{- range $index, $value := .Files -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
+		{{ range $index, $value := .Files -}}
+		{{- if $index }}, 
+		{{ end -}}
+		"{{- . -}}"
+		{{- end }}
 	},
 	"dirs":{
-	{{- range $index, $value := .Dirs -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
+		{{ range $index, $value := .Dirs -}}
+		{{- if $index }}, 
+		{{ end -}}
+		"{{- . -}}"
+		{{- end }}
 	}
 }`
 
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "testdata/sample_images", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -317,8 +316,11 @@ func TestIndexHandler_badpath(t *testing.T) {
 	templateString := ""
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "not-a-folder", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "not-a-folder", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -326,7 +328,7 @@ func TestIndexHandler_badpath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 404, res.StatusCode, "got wrong response")
+	assert.Equal(t, 500, res.StatusCode, "got wrong response")
 }
 
 // test to make sure that a bad template kicks a 500
@@ -334,8 +336,11 @@ func TestIndexHandler_badtemplate(t *testing.T) {
 	templateString := "{{ .ValueNotPresent }}"
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "testdata", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -413,11 +418,11 @@ func TestDirSplitHandler(t *testing.T) {
 
 	// setup a handler that returns one thing on the main path, and another on other paths
 	done := make(chan struct{})
+	defer close(done)
 	logger := log.New(ioutil.Discard, "", 0)
 	ts := httptest.NewServer(DirSplitHandler(logger, "testdata/sample_images", done,
 		foundHandler(), http.NotFoundHandler()))
 	defer ts.Close()
-	defer close(done)
 
 	baseURL, err := url.Parse(ts.URL)
 	if err != nil {

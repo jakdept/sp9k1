@@ -1,5 +1,23 @@
 {
-	"all":{"accidentally_save_file.gif", "blocked_us.png", "carlton_pls.jpg", "component.css", "default.css", "fixtures", "grid.js", "lemur_pudding_cups.jpg", "modernizr.custom.js", "page.html", "page.template", "sample_images", "spooning_a_barret.png", "whats_in_the_case.gif"},
-	"files":{"accidentally_save_file.gif", "blocked_us.png", "carlton_pls.jpg", "component.css", "default.css", "grid.js", "lemur_pudding_cups.jpg", "modernizr.custom.js", "page.html", "page.template", "spooning_a_barret.png", "whats_in_the_case.gif"},
-	"dirs":{"fixtures", "sample_images"}
+	"files":{
+		"6_gummy_bears.png", 
+		"dickbutt_for_mayor.gif", 
+		"fort_kickass.jpg", 
+		"fuck_you_space.png", 
+		"janis_joplin_rimjob.jpg", 
+		"lemur_pudding_cups.jpg", 
+		"looking_for_a_terrorist_and_ocelot.gif", 
+		"ninjas_are_sexy.gif", 
+		"sour_mix_in_margarits.png", 
+		"spooning_a_barret.png", 
+		"throbbing_erection.png", 
+		"whats_in_the_case.gif", 
+		"woodhouse_like_people.png"
+	},
+	"dirs":{
+		"/", 
+		"/edat", 
+		"/jim", 
+		"/taes"
+	}
 }

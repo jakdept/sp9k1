@@ -96,18 +96,29 @@ func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // IndexHandler lists all files in a directory, and passes them to template execution to build a directory listing.
-func IndexHandler(logger *log.Logger, basePath string, templ *template.Template) http.Handler {
-	return indexHandler{basePath: basePath, templ: templ, l: logger}
+func IndexHandler(logger *log.Logger, basepath string, done <-chan struct{}, templ *template.Template) http.Handler {
+	tracker, err := dir.Watch(basepath)
+	if err != nil {
+		logger.Printf("failed to watch directory [%s] - %v", basepath, err)
+		return ErrorHandler(500, "failed to initialize IndexHandler - %v", err)
+	}
+	go func() {
+		<-done
+		tracker.Close()
+	}()
+
+	return indexHandler{basePath: basepath, templ: templ, l: logger, dir: tracker, done: done}
 }
 
 type IndexData struct {
 	Files []string
 	Dirs  []string
-	All   []string
 }
 
 type indexHandler struct {
 	l        *log.Logger
+	done     <-chan struct{}
+	dir      *dir.Tracker
 	basePath string
 	templ    *template.Template
 }
@@ -141,13 +152,10 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data IndexData
+	data.Dirs = c.dir.List()
 
 	for _, each := range contents {
-		data.All = append(data.All, each.Name())
-		switch each.IsDir() {
-		case true:
-			data.Dirs = append(data.Dirs, each.Name())
-		default:
+		if !each.IsDir() {
 			if !strings.HasPrefix(each.Name(), ".") {
 				data.Files = append(data.Files, each.Name())
 			}
@@ -363,4 +371,17 @@ func (h thumbnailHandler) generateRawPath(imageName string) string {
 
 func (h thumbnailHandler) trimThumbExt(in string) string {
 	return path.Clean(strings.TrimSuffix(in, "."+h.thumbExt))
+}
+
+type errorHandler struct {
+	code int
+	msg  string
+}
+
+func (h errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, h.msg, h.code)
+}
+
+func ErrorHandler(code int, msg string, args ...interface{}) http.Handler {
+	return errorHandler{code: code, msg: fmt.Sprintf(msg, args...)}
 }

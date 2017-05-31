@@ -41,9 +41,11 @@ func main() {
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
 
 	mux := http.NewServeMux()
+	done := make(chan struct{})
+	defer close(done)
 
-	mux.Handle("/", SplitHandler(
-		IndexHandler(logger, basePath, templ),
+	mux.Handle("/", DirSplitHandler(logger, basePath, done,
+		IndexHandler(logger, basePath, done, templ),
 		ContentTypeHandler(logger, basePath)))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", SplitHandler(
