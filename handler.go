@@ -22,6 +22,7 @@ import (
 	"image/jpeg"
 	"image/png"
 
+	"github.com/jakdept/dir"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/nfnt/resize"
 	"github.com/oliamb/cutter"
@@ -43,6 +44,33 @@ func (p splitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.bare.ServeHTTP(w, r)
 	} else {
 		p.more.ServeHTTP(w, r)
+	}
+}
+
+func DirSplitHandler(logger *log.Logger, basepath string, done <-chan struct{}, folder, other http.Handler) http.Handler {
+	tracker, err := dir.Watch(basepath)
+	if err != nil {
+		log.Fatalf("failed to watch directory [%s] - %v", basepath, err)
+	}
+	go func() {
+		<-done
+		tracker.Close()
+	}()
+
+	return dirSplitHandler{dir: tracker, folder: folder, other: other}
+}
+
+type dirSplitHandler struct {
+	dir    *dir.Tracker
+	folder http.Handler
+	other  http.Handler
+}
+
+func (h dirSplitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.dir.In(path.Clean(r.URL.Path)) {
+		h.folder.ServeHTTP(w, r)
+	} else {
+		h.other.ServeHTTP(w, r)
 	}
 }
 
@@ -68,18 +96,29 @@ func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // IndexHandler lists all files in a directory, and passes them to template execution to build a directory listing.
-func IndexHandler(logger *log.Logger, basePath string, templ *template.Template) http.Handler {
-	return indexHandler{basePath: basePath, templ: templ, l: logger}
+func IndexHandler(logger *log.Logger, basepath string, done <-chan struct{}, templ *template.Template) http.Handler {
+	tracker, err := dir.Watch(basepath)
+	if err != nil {
+		logger.Printf("failed to watch directory [%s] - %v", basepath, err)
+		return ErrorHandler(500, "failed to initialize IndexHandler - %v", err)
+	}
+	go func() {
+		<-done
+		tracker.Close()
+	}()
+
+	return indexHandler{basePath: basepath, templ: templ, l: logger, dir: tracker, done: done}
 }
 
 type IndexData struct {
 	Files []string
 	Dirs  []string
-	All   []string
 }
 
 type indexHandler struct {
 	l        *log.Logger
+	done     <-chan struct{}
+	dir      *dir.Tracker
 	basePath string
 	templ    *template.Template
 }
@@ -113,15 +152,14 @@ func (c indexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data IndexData
+	data.Dirs = c.dir.List()
 
 	for _, each := range contents {
-		data.All = append(data.All, each.Name())
-		switch each.IsDir() {
-		case true:
-			data.Dirs = append(data.Dirs, each.Name())
-		default:
+		if !each.IsDir() {
+			// suppress directories
 			if !strings.HasPrefix(each.Name(), ".") {
-				data.Files = append(data.Files, each.Name())
+				// suppress hidden files
+				data.Files = append(data.Files, path.Join(r.URL.Path, each.Name()))
 			}
 		}
 	}
@@ -223,12 +261,6 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		h.l.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
-		return
-	}
-
 	var img image.Image
 	img, err = h.loadThumbnail(h.trimThumbExt(r.URL.Path))
 	if err != nil {
@@ -270,7 +302,7 @@ func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {
 		}
 		err = h.writeThumbnail(imageName, img)
 		if err != nil {
-			return nil, fmt.Errorf("could not cache [%s]: %s", imageName, err)
+			return nil, fmt.Errorf("could not cache thumbnail [%s]: %s", imageName, err)
 		}
 	}
 	if err != nil {
@@ -280,6 +312,10 @@ func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {
 }
 
 func (h thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
+	err := os.MkdirAll(filepath.Join(h.thumbs, "/", filepath.Dir(imageName)), 755)
+	if err != nil {
+		return fmt.Errorf("could not create folder [%s]: %s", imageName, err)
+	}
 	out, err := os.Create(h.generateThumbPath(imageName))
 	if err != nil {
 		return err
@@ -335,4 +371,17 @@ func (h thumbnailHandler) generateRawPath(imageName string) string {
 
 func (h thumbnailHandler) trimThumbExt(in string) string {
 	return path.Clean(strings.TrimSuffix(in, "."+h.thumbExt))
+}
+
+type errorHandler struct {
+	code int
+	msg  string
+}
+
+func (h errorHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, h.msg, h.code)
+}
+
+func ErrorHandler(code int, msg string, args ...interface{}) http.Handler {
+	return errorHandler{code: code, msg: fmt.Sprintf(msg, args...)}
 }

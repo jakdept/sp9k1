@@ -32,6 +32,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to load statik fs, aborting tests: %s", err)
 	}
+	goldie.FixtureDir = "testdata/fixtures"
 }
 
 func TestInternalHandler(t *testing.T) {
@@ -271,30 +272,29 @@ func TestContentTypeHandler(t *testing.T) {
 
 func TestIndexHandler_successful(t *testing.T) {
 	templateString := `{
-	"all":{
-	{{- range $index, $value := .All -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
-	},
 	"files":{
-	{{- range $index, $value := .Files -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
+		{{ range $index, $value := .Files -}}
+		{{- if $index }}, 
+		{{ end -}}
+		"{{- . -}}"
+		{{- end }}
 	},
 	"dirs":{
-	{{- range $index, $value := .Dirs -}}
-	{{- if $index }}, {{ end -}}
-	"{{- . -}}"
-	{{- end -}}
+		{{ range $index, $value := .Dirs -}}
+		{{- if $index }}, 
+		{{ end -}}
+		"{{- . -}}"
+		{{- end }}
 	}
 }`
 
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "testdata/sample_images", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -316,8 +316,11 @@ func TestIndexHandler_badpath(t *testing.T) {
 	templateString := ""
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "not-a-folder", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "not-a-folder", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -325,7 +328,7 @@ func TestIndexHandler_badpath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, 404, res.StatusCode, "got wrong response")
+	assert.Equal(t, 500, res.StatusCode, "got wrong response")
 }
 
 // test to make sure that a bad template kicks a 500
@@ -333,8 +336,11 @@ func TestIndexHandler_badtemplate(t *testing.T) {
 	templateString := "{{ .ValueNotPresent }}"
 	testTempl := template.Must(template.New("test").Parse(templateString))
 
+	done := make(chan struct{})
+	defer close(done)
+
 	logger := log.New(ioutil.Discard, "", 0)
-	ts := httptest.NewServer(IndexHandler(logger, "testdata", testTempl))
+	ts := httptest.NewServer(IndexHandler(logger, "testdata", done, testTempl))
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)
@@ -366,6 +372,56 @@ func TestSplitHandler(t *testing.T) {
 
 	// setup a handler that returns one thing on the main path, and another on other paths
 	ts := httptest.NewServer(SplitHandler(foundHandler(), http.NotFoundHandler()))
+	defer ts.Close()
+
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("failed to parse url: %s", err)
+	}
+
+	for testID, test := range testData {
+		t.Run(fmt.Sprintf("TestContentTypeHandle #%d - [%s]", testID, test.uri), func(t *testing.T) {
+			uri, err := url.Parse(test.uri)
+			if err != nil {
+				t.Errorf("bad URI path: [%s]", test.uri)
+				return
+			}
+
+			res, err := http.Get(baseURL.ResolveReference(uri).String())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if res.StatusCode == 200 {
+				res.Body.Close()
+			}
+
+			assert.Equal(t, test.code, res.StatusCode, "#%d - not routed properly", testID)
+		})
+	}
+}
+
+func TestDirSplitHandler(t *testing.T) {
+	testData := []struct {
+		uri  string
+		code int
+	}{
+		{uri: "/", code: 200},
+		{uri: "/edat", code: 200},
+		{uri: "/jim", code: 200},
+		{uri: "/taes", code: 200},
+		{uri: "", code: 200},
+		{uri: "./", code: 200},
+		{uri: "/other", code: 404},
+		{uri: "bad/url", code: 404},
+	}
+
+	// setup a handler that returns one thing on the main path, and another on other paths
+	done := make(chan struct{})
+	defer close(done)
+	logger := log.New(ioutil.Discard, "", 0)
+	ts := httptest.NewServer(DirSplitHandler(logger, "testdata/sample_images", done,
+		foundHandler(), http.NotFoundHandler()))
 	defer ts.Close()
 
 	baseURL, err := url.Parse(ts.URL)
