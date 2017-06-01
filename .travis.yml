@@ -1,0 +1,17 @@
+language: go
+
+go:
+  - 1.7.x
+  - 1.8.x
+  - master
+
+os:
+ - linux
+ - osx
+
+install:
+ - go get -t -v ./...
+
+script:
+ - go install ./...
+ - go test -v -race ./...
