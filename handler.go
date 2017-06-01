@@ -261,12 +261,6 @@ func (h thumbnailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("cannot read file: %s", r.URL.Path), http.StatusInternalServerError)
-		h.l.Printf("500 - error opening file: %s - %s", filepath.Join(h.thumbs, r.URL.Path), err)
-		return
-	}
-
 	var img image.Image
 	img, err = h.loadThumbnail(h.trimThumbExt(r.URL.Path))
 	if err != nil {
@@ -308,7 +302,7 @@ func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {
 		}
 		err = h.writeThumbnail(imageName, img)
 		if err != nil {
-			return nil, fmt.Errorf("could not cache [%s]: %s", imageName, err)
+			return nil, fmt.Errorf("could not cache thumbnail [%s]: %s", imageName, err)
 		}
 	}
 	if err != nil {
@@ -318,6 +312,10 @@ func (h thumbnailHandler) loadThumbnail(imageName string) (image.Image, error) {
 }
 
 func (h thumbnailHandler) writeThumbnail(imageName string, thumbnailImage image.Image) error {
+	err := os.MkdirAll(filepath.Join(h.thumbs, "/", filepath.Dir(imageName)), 755)
+	if err != nil {
+		return fmt.Errorf("could not create folder [%s]: %s", imageName, err)
+	}
 	out, err := os.Create(h.generateThumbPath(imageName))
 	if err != nil {
 		return err
