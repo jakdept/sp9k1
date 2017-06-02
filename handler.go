@@ -85,6 +85,7 @@ type internalHandler struct {
 }
 
 func (c internalHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// block access to files ending in .template
 	if path.Ext(r.URL.Path) == ".template" {
 		http.Error(w, fmt.Sprintf("template requested, blocked: %s", r.URL.Path), http.StatusForbidden)
 		c.l.Printf("403 - error responding: %s", r.URL.Path)
