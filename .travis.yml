@@ -10,8 +10,11 @@ os:
  - osx
 
 install:
+ - go get github.com/rakyll/statik
+ - go generate
  - go get -t -v ./...
 
 script:
+ - go install 
  - go install ./...
  - go test -v -race ./...
