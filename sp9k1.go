@@ -17,7 +17,7 @@ func main() {
 
 	listenAddress := flag.String("listen", ":8080", "address to liste")
 	imageDir := flag.String("images", "./", "location of images to host")
-	thumbDir := flag.String("thumbs", "", "if set, location to hold thumbnails")
+	// thumbDir := flag.String("thumbs", "", "if set, location to hold thumbnails")
 	staticDir := flag.String("static", "", "if set, alternate location to serve as /static/")
 	templateFile := flag.String("template", "", "if set, alternate template to use")
 	thumbWidth := flag.Int("thumbWidth", 310, "width of thumbnails to create")
