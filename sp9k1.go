@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -10,51 +11,101 @@ import (
 	"github.com/rakyll/statik/fs"
 )
 
+// now would this be shitposting if there were _tests_?
+
 func main() {
+
+	listenAddress := flag.String("listen", ":8080", "address to liste")
+	imageDir := flag.String("images", "./", "location of images to host")
+	// thumbDir := flag.String("thumbs", "", "if set, location to hold thumbnails")
+	staticDir := flag.String("static", "", "if set, alternate location to serve as /static/")
+	templateFile := flag.String("template", "", "if set, alternate template to use")
+	thumbWidth := flag.Int("thumbWidth", 310, "width of thumbnails to create")
+	thumbHeight := flag.Int("thumbHeight", 200, "width of thumbnails to create")
+
+	flag.Parse()
+
+	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
 
 	fs, err := fs.New()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
-	templateFile, err := fs.Open("/page.template")
+	var templ *template.Template
+	if *templateFile == "" {
+		// have to do it the hard way because it comes from fs
+		templFile, err := fs.Open("/page.template")
+		if err != nil {
+			logger.Fatal(err)
+		}
+		templData, err := ioutil.ReadAll(templFile)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		templ, err = template.New("page.template").Parse(string(templData))
+		if err != nil {
+			logger.Fatal(err)
+		}
+	} else {
+		// if an alternate template was provided, i can use that instead
+		templ, err = template.ParseFiles(*templateFile)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+
+	var thumbnailPath string
+	// if *thumbDir != "" {
+	// 	if *imageDir != "" {
+	// 		thumbnailPath = fmt.Sprintf("%s-%s", *imageDir, *thumbDir)
+	// 		err = os.MkdirAll(thumbnailPath, 0750)
+	// 		if err != nil {
+	// 			logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
+	// 		}
+	// 	} else {
+	thumbnailPath, err = ioutil.TempDir("", "thumbnailcache-")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
 	}
-
-	templateData, err := ioutil.ReadAll(templateFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	templ, err := template.New("page.template").Parse(string(templateData))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	basePath := "./"
-	thumbnailPath, err := ioutil.TempDir("", "thumbnailcache-")
-	if err != nil {
-		log.Fatalf("Could not create tempoary thumbnail directory - %s", err)
-	}
-
-	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
+	// 	}
+	// }
 
 	mux := http.NewServeMux()
 	done := make(chan struct{})
 	defer close(done)
 
-	mux.Handle("/", DirSplitHandler(logger, basePath, done,
-		IndexHandler(logger, basePath, done, templ),
-		ContentTypeHandler(logger, basePath)))
+	var staticHandler http.Handler
+	if *staticDir == "" {
+		staticHandler = InternalHandler(logger, fs)
+	} else {
+		staticHandler = http.FileServer(http.Dir(*staticDir))
+	}
 
-	mux.Handle("/static/", http.StripPrefix("/static/", SplitHandler(
-		http.RedirectHandler("/", 302),
-		InternalHandler(logger, fs))))
+	mux.Handle(
+		"/", DirSplitHandler(logger, *imageDir, done,
+			IndexHandler(logger, *imageDir, done, templ),
+			ContentTypeHandler(logger, *imageDir),
+		),
+	)
 
-	mux.Handle("/thumb/", http.StripPrefix("/thumb/", SplitHandler(
-		http.RedirectHandler("/", 302),
-		ThumbnailHandler(logger, 310, 200, basePath, thumbnailPath, "jpg"))))
+	mux.Handle("/static/",
+		http.StripPrefix("/static/",
+			SplitHandler(
+				http.RedirectHandler("/", 302),
+				staticHandler,
+			),
+		),
+	)
 
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	mux.Handle("/thumb/",
+		http.StripPrefix("/thumb/",
+			SplitHandler(
+				http.RedirectHandler("/", 302),
+				ThumbnailHandler(logger, *thumbWidth, *thumbHeight, *imageDir, thumbnailPath, "jpg"),
+			),
+		),
+	)
+
+	logger.Fatal(http.ListenAndServe(*listenAddress, mux))
 }
