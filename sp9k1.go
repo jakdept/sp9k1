@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -57,20 +56,20 @@ func main() {
 	}
 
 	var thumbnailPath string
-	if *thumbDir != "" {
-		if *imageDir != "" {
-			thumbnailPath = fmt.Sprintf("%s-%s", *imageDir, *thumbDir)
-			err = os.MkdirAll(thumbnailPath, 0750)
-			if err != nil {
-				logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
-			}
-		} else {
-			thumbnailPath, err = ioutil.TempDir("", "thumbnailcache-")
-			if err != nil {
-				logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
-			}
-		}
+	// if *thumbDir != "" {
+	// 	if *imageDir != "" {
+	// 		thumbnailPath = fmt.Sprintf("%s-%s", *imageDir, *thumbDir)
+	// 		err = os.MkdirAll(thumbnailPath, 0750)
+	// 		if err != nil {
+	// 			logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
+	// 		}
+	// 	} else {
+	thumbnailPath, err = ioutil.TempDir("", "thumbnailcache-")
+	if err != nil {
+		logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
 	}
+	// 	}
+	// }
 
 	mux := http.NewServeMux()
 	done := make(chan struct{})
