@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/jakdept/dandler"
 	"github.com/rakyll/statik/fs"
 )
 
@@ -77,21 +78,21 @@ func main() {
 
 	var staticHandler http.Handler
 	if *staticDir == "" {
-		staticHandler = InternalHandler(logger, fs)
+		staticHandler = dandler.InternalHandler(logger, fs)
 	} else {
 		staticHandler = http.FileServer(http.Dir(*staticDir))
 	}
 
 	mux.Handle(
-		"/", DirSplitHandler(logger, *imageDir, done,
-			IndexHandler(logger, *imageDir, done, templ),
-			ContentTypeHandler(logger, *imageDir),
+		"/", dandler.DirSplitHandler(logger, *imageDir, done,
+			dandler.IndexHandler(logger, *imageDir, done, templ),
+			dandler.ContentTypeHandler(logger, *imageDir),
 		),
 	)
 
 	mux.Handle("/static/",
 		http.StripPrefix("/static/",
-			SplitHandler(
+			dandler.SplitHandler(
 				http.RedirectHandler("/", 302),
 				staticHandler,
 			),
@@ -100,9 +101,9 @@ func main() {
 
 	mux.Handle("/thumb/",
 		http.StripPrefix("/thumb/",
-			SplitHandler(
+			dandler.SplitHandler(
 				http.RedirectHandler("/", 302),
-				ThumbnailHandler(logger, *thumbWidth, *thumbHeight, *imageDir, thumbnailPath, "jpg"),
+				dandler.ThumbnailHandler(logger, *thumbWidth, *thumbHeight, *imageDir, thumbnailPath, "jpg"),
 			),
 		),
 	)
