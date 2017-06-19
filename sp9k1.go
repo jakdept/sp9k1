@@ -44,6 +44,10 @@ var serverBanner = `
 \______________________________________________________________________________/
 `
 
+func flags() {
+
+}
+
 func main() {
 
 	listenAddress := flag.String("listen", ":8080", "address to liste")
@@ -91,21 +95,21 @@ func main() {
 
 	var staticHandler http.Handler
 	if *staticDir == "" {
-		staticHandler = dandler.InternalHandler(logger, fs)
+		staticHandler = dandler.Internal(logger, fs)
 	} else {
 		staticHandler = http.FileServer(http.Dir(*staticDir))
 	}
 
 	mux.Handle(
-		"/", dandler.DirSplitHandler(logger, *imageDir, done,
-			dandler.IndexHandler(logger, *imageDir, done, templ),
-			dandler.ContentTypeHandler(logger, *imageDir),
+		"/", dandler.DirSplit(logger, *imageDir, done,
+			dandler.Index(logger, *imageDir, done, templ),
+			dandler.ContentType(logger, *imageDir),
 		),
 	)
 
 	mux.Handle("/static/",
 		http.StripPrefix("/static/",
-			dandler.SplitHandler(
+			dandler.Split(
 				http.RedirectHandler("/", 302),
 				staticHandler,
 			),
@@ -114,15 +118,15 @@ func main() {
 
 	mux.Handle("/thumb/",
 		http.StripPrefix("/thumb/",
-			dandler.SplitHandler(
+			dandler.Split(
 				http.RedirectHandler("/", 302),
-				dandler.ThumbCache(logger, *thumbWidth, *thumbHeight, 32*dandler.Megabyte, *imageDir, "thumbs", "jpg"),
+				dandler.ThumbCache(logger, *thumbWidth, *thumbHeight, int64(32*dandler.Megabyte), *imageDir, "thumbs", "jpg"),
 			),
 		),
 	)
 
-	allHandlers := dandler.HeaderHandler("Server", serverBanner, mux)
-	allHandlers = dandler.HeaderHandler("Cache-control", "public max-age=2592000", allHandlers)
+	allHandlers := dandler.ASCIIHeader("Server", serverBanner, " ", mux)
+	allHandlers = dandler.Header("Cache-control", "public max-age=2592000", allHandlers)
 	allHandlers = handlers.CombinedLoggingHandler(os.Stdout, allHandlers)
 
 	// compress responses
