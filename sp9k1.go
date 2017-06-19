@@ -1,3 +1,5 @@
+// go:generate statik -src=./static
+
 package main
 
 import (
@@ -8,11 +10,39 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
+	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
 )
 
 // now would this be shitposting if there were _tests_?
+
+var serverBanner = `
+'______________________________________________________________________________
+/                                                                              \
+|                 '.'                           .-:::::::::::::::::::::-'      | 
+|                 -///-'                      '/+++++++++++++++++++++++++-     | 
+|                ':+++++/-                    -++//////////////////////+++     | 
+|                /++++++//:.                  -+/----------------------:++     | 
+|               '/++++///:::.                 -+/---:dddddddds+ymmms----++     | 
+|             .://+////:::::-                 -+/...:mmmmmdyoymNNNNy...-++     | 
+|           '://////::::::::::-.              -++::-:mmmdyoymNNNNNNy--:/++     | 
+|           ://:::::::::::/+++//:'            -+++++ommmhoymNNNNNNNh++++++     | 
+|           :/syys+:::///++syhyo:.            -+++++ommmmdsodNNNNNNh++++++     | 
+|         '.+mdo+hmh++++/ommo+yNh-''          -+++++ommmmmmhosmNNNNh++++++     | 
+|       .//+mN.'''hNs///:mN:'''sNy//-         -+++++ommmmmmmdyohNNNh++++++     | 
+|      '///+NN.'''hNs::::mM-'''sMy/::-        -++++++dmmmmmmmmdssdNh++++++     | 
+|      '::::yNd+/yMd::://sNmo/sMm/:::-        -++++++oyyyyyyyyyyo+s+++++++     | 
+|      '-::::+hmmds//++++/+ydmds/::::-'       -+++++++++++++++++++++++++++     | 
+|   '-///++++++++++++++++++///:::::////:.     '/+++++++++++++++++++++++++-     | 
+|  .///////////+hmmmmmmmmmmmh+::://+///::-      .:::::::+++++++++/:::::-'      | 
+|  ::////////::::+shmmNmmhs+:://++//::::::.             +++++++++:             | 
+|  -:::::::::::::::::::::///+++///:::::::-'             +++++++++:             | 
+|   .-:::::::::::::::////+////:::::::::-.'              +++++++++:             | 
+|      '''''''    ''''''''''''''''''''                  .........'             | 
+\______________________________________________________________________________/
+`
 
 func main() {
 
@@ -108,5 +138,12 @@ func main() {
 		),
 	)
 
-	logger.Fatal(http.ListenAndServe(*listenAddress, mux))
+	allHandlers := dandler.HeaderHandler("Server", serverBanner, mux)
+	allHandlers = dandler.HeaderHandler("Cache-control", "public max-age=2592000", allHandlers)
+	allHandlers = handlers.CombinedLoggingHandler(os.Stdout, allHandlers)
+
+	// compress responses
+	allHandlers = handlers.CompressHandler(allHandlers)
+
+	logger.Fatal(http.ListenAndServe(*listenAddress, allHandlers))
 }
