@@ -125,7 +125,7 @@ func main() {
 		),
 	)
 
-	allHandlers := dandler.ASCIIHeader("Server", serverBanner, " ", mux)
+	allHandlers := dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
 	allHandlers = dandler.Header("Cache-control", "public max-age=2592000", allHandlers)
 	allHandlers = handlers.CombinedLoggingHandler(os.Stdout, allHandlers)
 
