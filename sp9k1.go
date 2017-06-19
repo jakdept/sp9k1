@@ -48,7 +48,6 @@ func main() {
 
 	listenAddress := flag.String("listen", ":8080", "address to liste")
 	imageDir := flag.String("images", "./", "location of images to host")
-	// thumbDir := flag.String("thumbs", "", "if set, location to hold thumbnails")
 	staticDir := flag.String("static", "", "if set, alternate location to serve as /static/")
 	templateFile := flag.String("template", "", "if set, alternate template to use")
 	thumbWidth := flag.Int("thumbWidth", 310, "width of thumbnails to create")
@@ -86,22 +85,6 @@ func main() {
 		}
 	}
 
-	var thumbnailPath string
-	// if *thumbDir != "" {
-	// 	if *imageDir != "" {
-	// 		thumbnailPath = fmt.Sprintf("%s-%s", *imageDir, *thumbDir)
-	// 		err = os.MkdirAll(thumbnailPath, 0750)
-	// 		if err != nil {
-	// 			logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
-	// 		}
-	// 	} else {
-	thumbnailPath, err = ioutil.TempDir("", "thumbnailcache-")
-	if err != nil {
-		logger.Fatalf("Could not create tempoary thumbnail directory - %s", err)
-	}
-	// 	}
-	// }
-
 	mux := http.NewServeMux()
 	done := make(chan struct{})
 	defer close(done)
@@ -133,7 +116,7 @@ func main() {
 		http.StripPrefix("/thumb/",
 			dandler.SplitHandler(
 				http.RedirectHandler("/", 302),
-				dandler.ThumbnailHandler(logger, *thumbWidth, *thumbHeight, *imageDir, thumbnailPath, "jpg"),
+				dandler.ThumbCache(logger, *thumbWidth, *thumbHeight, 32*dandler.Megabyte, *imageDir, "thumbs", "jpg"),
 			),
 		),
 	)
