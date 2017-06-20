@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
@@ -46,19 +47,23 @@ var serverBanner = `
 `
 
 const (
-	defaultListen = ":8080"
-	defaultImgDir = "./"
-	defaultWidth  = 310
-	defaultHeight = 200
+	defaultListen         = ":8080"
+	defaultImgDir         = "./"
+	defaultWidth          = 310
+	defaultHeight         = 200
+	defaultCacheDays      = 30
+	defaultCacheVariation = 7
 )
 
 var (
-	listenAddress string
-	imgDir        string
-	thumbWidth    int
-	thumbHeight   int
-	staticDir     flagTrap.StringTrap
-	templateFile  flagTrap.StringTrap
+	listenAddress  string
+	imgDir         string
+	thumbWidth     int
+	thumbHeight    int
+	cacheMinDays   int
+	cacheVariation int
+	staticDir      flagTrap.StringTrap
+	templateFile   flagTrap.StringTrap
 )
 
 func flags() {
@@ -69,6 +74,12 @@ func flags() {
 	usage = "directory of images to serve"
 	flag.StringVar(&imgDir, "images", defaultImgDir, usage)
 	flag.StringVar(&imgDir, "i", defaultImgDir, usage+" (shorthand)")
+
+	usage = "cache length"
+	flag.IntVar(&cacheMinDays, "cacheTime", defaultCacheDays, usage)
+
+	usage = "cache variation"
+	flag.IntVar(&cacheVariation, "cacheSkew", defaultCacheVariation, usage)
 
 	usage = "thumbnail width"
 	flag.IntVar(&thumbWidth, "width", defaultWidth, usage)
@@ -131,6 +142,8 @@ func buildMuxer(logger *log.Logger,
 	h = dandler.Split(http.RedirectHandler("/", 302), h)
 	// add a prefix before the handler
 	h = http.StripPrefix("/static/", h)
+	// add some expiration
+	h = dandler.ExpiresRange(time.Hour*24*cacheMinDays, time.Hour*24*cacheVariation, h)
 	// add the static handler to the muxer
 	mux.Handle("/static/", h)
 
@@ -140,6 +153,8 @@ func buildMuxer(logger *log.Logger,
 	h = dandler.Split(http.RedirectHandler("/", 302), h)
 	// strip the prefix
 	h = http.StripPrefix("/thumb/", h)
+	// add some expiration
+	h = dandler.ExpiresRange(time.Hour*24*cacheMinDays, time.Hour*24*cacheVariation, h)
 	// add the thumbnail handler to the muxer
 	mux.Handle("/thumb/", h)
 
@@ -150,7 +165,6 @@ func buildMuxer(logger *log.Logger,
 	mux.Handle("/", h)
 
 	h = dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
-	h = dandler.Header("Cache-control", "public max-age=2592000", h)
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)
 
 	// compress responses
