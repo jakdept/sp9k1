@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
+	"github.com/jakdept/flagTrap"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
 )
@@ -44,93 +45,134 @@ var serverBanner = `
 \______________________________________________________________________________/
 `
 
-func flags() {
+const (
+	defaultListen = ":8080"
+	defaultImgDir = "./"
+	defaultWidth  = 310
+	defaultHeight = 200
+)
 
+var (
+	listenAddress string
+	imgDir        string
+	thumbWidth    int
+	thumbHeight   int
+	staticDir     flagTrap.StringTrap
+	templateFile  flagTrap.StringTrap
+)
+
+func flags() {
+	usage := "address to listen for incoming traffic"
+	flag.StringVar(&listenAddress, "listen", defaultListen, usage)
+	flag.StringVar(&listenAddress, "l", defaultListen, usage+" (shorthand)")
+
+	usage = "directory of images to serve"
+	flag.StringVar(&imgDir, "images", defaultImgDir, usage)
+	flag.StringVar(&imgDir, "i", defaultImgDir, usage+" (shorthand)")
+
+	usage = "thumbnail width"
+	flag.IntVar(&thumbWidth, "width", defaultWidth, usage)
+	flag.IntVar(&thumbWidth, "w", defaultWidth, usage+" (shorthand)")
+
+	usage = "thumbnail height"
+	flag.IntVar(&thumbHeight, "height", defaultHeight, usage)
+	flag.IntVar(&thumbHeight, "h", defaultHeight, usage+" (shorthand)")
+
+	usage = "alternate static directory to serve"
+	flag.Var(&staticDir, "static", usage)
+	flag.Var(&staticDir, "s", usage+" (shorthand)")
+
+	usage = "alternate index template to serve"
+	flag.Var(&templateFile, "template", usage)
+	flag.Var(&templateFile, "t", usage+" (shorthand)")
+
+	flag.Parse()
+}
+
+func parseTemplate(logger *log.Logger, fs http.FileSystem) *template.Template {
+	if templateFile.IsSet() {
+		// if an alternate template was provided, i can use that instead
+		return template.Must(template.ParseFiles(templateFile.String()))
+	}
+	// have to do it the hard way because it comes from fs
+	templFile, err := fs.Open("/page.template")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	templData, err := ioutil.ReadAll(templFile)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	return template.Must(template.New("page.template").Parse(string(templData)))
+}
+
+func createStaticFS(logger *log.Logger, path flagTrap.StringTrap) http.FileSystem {
+	if path.IsSet() {
+		return http.Dir(path.String())
+	}
+	filesystem, err := fs.New()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	return filesystem
+}
+
+func buildMuxer(logger *log.Logger,
+	fs http.FileSystem,
+	templ *template.Template,
+	done chan struct{},
+) http.Handler {
+	var h http.Handler
+	mux := http.NewServeMux()
+
+	// building the static handler
+	h = http.FileServer(fs)
+	// split the main folder off into a redirect
+	h = dandler.Split(http.RedirectHandler("/", 302), h)
+	// add a prefix before the handler
+	h = http.StripPrefix("/static/", h)
+	// add the static handler to the muxer
+	mux.Handle("/static/", h)
+
+	// create a caching handler
+	h = dandler.ThumbCache(logger, thumbWidth, thumbHeight, 32<<20, imgDir, "thumbs", "jpg")
+	// split the folder itself into a redirect
+	h = dandler.Split(http.RedirectHandler("/", 302), h)
+	// strip the prefix
+	h = http.StripPrefix("/thumb/", h)
+	// add the thumbnail handler to the muxer
+	mux.Handle("/thumb/", h)
+
+	h = dandler.DirSplit(logger, imgDir, done,
+		dandler.Index(logger, imgDir, done, templ),
+		dandler.ContentType(logger, imgDir),
+	)
+	mux.Handle("/", h)
+
+	h = dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
+	h = dandler.Header("Cache-control", "public max-age=2592000", h)
+	h = handlers.CombinedLoggingHandler(os.Stdout, h)
+
+	// compress responses
+	h = handlers.CompressHandler(h)
+
+	return h
 }
 
 func main() {
 
-	listenAddress := flag.String("listen", ":8080", "address to liste")
-	imageDir := flag.String("images", "./", "location of images to host")
-	staticDir := flag.String("static", "", "if set, alternate location to serve as /static/")
-	templateFile := flag.String("template", "", "if set, alternate template to use")
-	thumbWidth := flag.Int("thumbWidth", 310, "width of thumbnails to create")
-	thumbHeight := flag.Int("thumbHeight", 200, "width of thumbnails to create")
-
-	flag.Parse()
+	flags()
 
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
 
-	fs, err := fs.New()
-	if err != nil {
-		logger.Fatal(err)
-	}
+	fs := createStaticFS(logger, staticDir)
 
-	var templ *template.Template
-	if *templateFile == "" {
-		// have to do it the hard way because it comes from fs
-		templFile, err := fs.Open("/page.template")
-		if err != nil {
-			logger.Fatal(err)
-		}
-		templData, err := ioutil.ReadAll(templFile)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		templ, err = template.New("page.template").Parse(string(templData))
-		if err != nil {
-			logger.Fatal(err)
-		}
-	} else {
-		// if an alternate template was provided, i can use that instead
-		templ, err = template.ParseFiles(*templateFile)
-		if err != nil {
-			logger.Fatal(err)
-		}
-	}
+	templ := parseTemplate(logger, fs)
 
-	mux := http.NewServeMux()
 	done := make(chan struct{})
 	defer close(done)
 
-	var staticHandler http.Handler
-	if *staticDir == "" {
-		staticHandler = dandler.Internal(logger, fs)
-	} else {
-		staticHandler = http.FileServer(http.Dir(*staticDir))
-	}
+	srvHandlers := buildMuxer(logger, fs, templ, done)
 
-	mux.Handle(
-		"/", dandler.DirSplit(logger, *imageDir, done,
-			dandler.Index(logger, *imageDir, done, templ),
-			dandler.ContentType(logger, *imageDir),
-		),
-	)
-
-	mux.Handle("/static/",
-		http.StripPrefix("/static/",
-			dandler.Split(
-				http.RedirectHandler("/", 302),
-				staticHandler,
-			),
-		),
-	)
-
-	mux.Handle("/thumb/",
-		http.StripPrefix("/thumb/",
-			dandler.Split(
-				http.RedirectHandler("/", 302),
-				dandler.ThumbCache(logger, *thumbWidth, *thumbHeight, int64(32*dandler.Megabyte), *imageDir, "thumbs", "jpg"),
-			),
-		),
-	)
-
-	allHandlers := dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
-	allHandlers = dandler.Header("Cache-control", "public max-age=2592000", allHandlers)
-	allHandlers = handlers.CombinedLoggingHandler(os.Stdout, allHandlers)
-
-	// compress responses
-	allHandlers = handlers.CompressHandler(allHandlers)
-
-	logger.Fatal(http.ListenAndServe(*listenAddress, allHandlers))
+	logger.Fatal(http.ListenAndServe(listenAddress, srvHandlers))
 }
