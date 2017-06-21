@@ -1,4 +1,4 @@
-// go:generate statik -src=./static
+//go:generate statik
 
 package main
 

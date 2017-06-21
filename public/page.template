@@ -48,8 +48,8 @@
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb{{.}}.jpg"
-          data-original="/{{.}}" alt="{{.}}">
+        <img class="image-card mdl-shadow--2dp" src="/thumb{{.}}"
+          data-original="{{.}}" alt="{{.}}">
         {{end}}
 
       </div>
