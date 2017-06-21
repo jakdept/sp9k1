@@ -1,4 +1,4 @@
-//go:generate statik
+// go:generate statik -src=./static
 
 package main
 
@@ -53,17 +53,24 @@ const (
 	defaultHeight         = 200
 	defaultCacheDays      = 30
 	defaultCacheVariation = 7
+	defaultHost           = "localhost:80"
 )
 
 var (
-	listenAddress  string
-	imgDir         string
-	thumbWidth     int
-	thumbHeight    int
-	cacheMinDays   int
-	cacheVariation int
-	staticDir      flagTrap.StringTrap
-	templateFile   flagTrap.StringTrap
+	listenAddress       string
+	imgDir              string
+	thumbWidth          int
+	thumbHeight         int
+	cacheMinDays        int
+	cacheVariation      int
+	staticDir           flagTrap.StringTrap
+	templateFile        flagTrap.StringTrap
+	canonicalHost       string
+	canonicalPort       string
+	canonicalForceHost  bool
+	canonicalForcePort  bool
+	canonicalDisableTLS bool
+	canonicalForceTLS   bool
 )
 
 func flags() {
@@ -96,6 +103,13 @@ func flags() {
 	usage = "alternate index template to serve"
 	flag.Var(&templateFile, "template", usage)
 	flag.Var(&templateFile, "t", usage+" (shorthand)")
+
+	flag.StringVar(&canonicalHost, "canonicalHost", defaultHost, "canonical host to force")
+	flag.StringVar(&canonicalHost, "canonicalPort", defaultHost, "canonical port to force")
+	flag.BoolVar(&canonicalDisableTLS, "canonicalDisableTLS", false, "force unencrypted protocol")
+	flag.BoolVar(&canonicalForceTLS, "canonicalForceTLS", false, "force encrypted protocol")
+	flag.BoolVar(&canonicalForceHost, "canonicalForceHost", false, "force a specific hostname")
+	flag.BoolVar(&canonicalForcePort, "canonicalForcePort", false, "force a specific port")
 
 	flag.Parse()
 }
@@ -133,6 +147,8 @@ func buildMuxer(logger *log.Logger,
 	templ *template.Template,
 	done chan struct{},
 ) http.Handler {
+
+	day := time.Hour * time.Duration(64)
 	var h http.Handler
 	mux := http.NewServeMux()
 
@@ -143,7 +159,8 @@ func buildMuxer(logger *log.Logger,
 	// add a prefix before the handler
 	h = http.StripPrefix("/static/", h)
 	// add some expiration
-	h = dandler.ExpiresRange(time.Hour*24*cacheMinDays, time.Hour*24*cacheVariation, h)
+	h = dandler.ExpiresRange(day*time.Duration(cacheMinDays),
+		day*time.Duration(cacheVariation), h)
 	// add the static handler to the muxer
 	mux.Handle("/static/", h)
 
@@ -154,7 +171,8 @@ func buildMuxer(logger *log.Logger,
 	// strip the prefix
 	h = http.StripPrefix("/thumb/", h)
 	// add some expiration
-	h = dandler.ExpiresRange(time.Hour*24*cacheMinDays, time.Hour*24*cacheVariation, h)
+	h = dandler.ExpiresRange(day*time.Duration(cacheMinDays),
+		day*time.Duration(cacheVariation), h)
 	// add the thumbnail handler to the muxer
 	mux.Handle("/thumb/", h)
 
@@ -166,6 +184,27 @@ func buildMuxer(logger *log.Logger,
 
 	h = dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)
+
+	// add canonical header if required
+	if canonicalForceHost ||
+		canonicalForcePort ||
+		canonicalForceTLS ||
+		canonicalDisableTLS {
+		options := 0
+		if canonicalForceHost {
+			options += dandler.ForceHost
+		}
+		if canonicalForcePort {
+			options += dandler.ForcePort
+		}
+		if canonicalForceTLS {
+			options += dandler.ForceHTTPS
+		} else if canonicalDisableTLS {
+			options += dandler.ForceHTTP
+		}
+
+		h = dandler.CanocialHost(canonicalHost, canonicalPort, options, h)
+	}
 
 	// compress responses
 	h = handlers.CompressHandler(h)
