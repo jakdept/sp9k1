@@ -53,7 +53,7 @@ const (
 	defaultHeight         = 200
 	defaultCacheDays      = 30
 	defaultCacheVariation = 7
-	defaultHost           = "localhost:80"
+	defaultURL            = "localhost:80"
 )
 
 var (
@@ -65,8 +65,7 @@ var (
 	cacheVariation      int
 	staticDir           flagTrap.StringTrap
 	templateFile        flagTrap.StringTrap
-	canonicalHost       string
-	canonicalPort       string
+	canonicalURL        string
 	canonicalForceHost  bool
 	canonicalForcePort  bool
 	canonicalDisableTLS bool
@@ -104,8 +103,7 @@ func flags() {
 	flag.Var(&templateFile, "template", usage)
 	flag.Var(&templateFile, "t", usage+" (shorthand)")
 
-	flag.StringVar(&canonicalHost, "canonicalHost", defaultHost, "canonical host to force")
-	flag.StringVar(&canonicalHost, "canonicalPort", defaultHost, "canonical port to force")
+	flag.StringVar(&canonicalURL, "canonicalURl", defaultURL, "canonical host to force")
 	flag.BoolVar(&canonicalDisableTLS, "canonicalDisableTLS", false, "force unencrypted protocol")
 	flag.BoolVar(&canonicalForceTLS, "canonicalForceTLS", false, "force encrypted protocol")
 	flag.BoolVar(&canonicalForceHost, "canonicalForceHost", false, "force a specific hostname")
@@ -203,7 +201,7 @@ func buildMuxer(logger *log.Logger,
 			options += dandler.ForceHTTP
 		}
 
-		h = dandler.CanocialHost(canonicalHost, canonicalPort, options, h)
+		h = dandler.CanonicalHost(canonicalURL, options, h)
 	}
 
 	// compress responses
