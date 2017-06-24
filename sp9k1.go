@@ -3,7 +3,6 @@
 package main
 
 import (
-	"flag"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -11,9 +10,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/alecthomas/kingpin"
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
-	"github.com/jakdept/flagTrap"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
 )
@@ -46,76 +45,39 @@ var serverBanner = `
 \______________________________________________________________________________/
 `
 
-const (
-	defaultListen         = ":8080"
-	defaultImgDir         = "./"
-	defaultWidth          = 310
-	defaultHeight         = 200
-	defaultCacheDays      = 30
-	defaultCacheVariation = 7
-	defaultURL            = "localhost:80"
-)
-
 var (
-	listenAddress       string
-	imgDir              string
-	thumbWidth          int
-	thumbHeight         int
-	cacheMinDays        int
-	cacheVariation      int
-	staticDir           flagTrap.StringTrap
-	templateFile        flagTrap.StringTrap
-	canonicalURL        string
-	canonicalForceHost  bool
-	canonicalForcePort  bool
-	canonicalDisableTLS bool
-	canonicalForceTLS   bool
+	listenAddress = kingpin.Flag("listen", "addresses to listen for incoming non-TLS connections").
+			Short('l').Default("127.0.0.1:8080").TCP()
+
+	hostname = kingpin.Flag("hostname", "hostname to register").Short('h').String()
+
+	imgDir = kingpin.Flag("images", "directory of images to serve").
+		Short('i').Default("./").ExistingDir()
+
+	cacheMinDays = kingpin.Flag("cacheMin", "minimum days to cache images in browser").
+			Default("30").Int()
+
+	cacheVariation = kingpin.Flag("cacheVariation", "difference between minimum and maximum length to cache images").
+			Default("7").Int()
+
+	thumbWidth  = kingpin.Flag("width", "maximum thumbnail width").Default("310").Int()
+	thumbHeight = kingpin.Flag("height", "thumbnail height").Default("200").Int()
+
+	staticDir = kingpin.Flag("static", "alternate static directory to serve").Short('s').ExistingDir()
+
+	templateFile = kingpin.Flag("template", "alternate index template to serve").Short('t').ExistingFile()
+
+	canonicalURL        = kingpin.Flag("canonicalURL", "default redirect to serve").Default("localhost:80").String()
+	canonicalDisableTLS = kingpin.Flag("canonicalDisableTLS", "force unencrypted protocol").Default("false").Bool()
+	canonicalForceTLS   = kingpin.Flag("canonicalForceTLS", "force encrypted protocol").Default("true").Bool()
+	canonicalForceHost  = kingpin.Flag("canonicalForceHost", "force a specific hostname").Default("true").Bool()
+	canonicalForcePort  = kingpin.Flag("canonicalForcePort", "force a specific port").Default("false").Bool()
 )
-
-func flags() {
-	usage := "address to listen for incoming traffic"
-	flag.StringVar(&listenAddress, "listen", defaultListen, usage)
-	flag.StringVar(&listenAddress, "l", defaultListen, usage+" (shorthand)")
-
-	usage = "directory of images to serve"
-	flag.StringVar(&imgDir, "images", defaultImgDir, usage)
-	flag.StringVar(&imgDir, "i", defaultImgDir, usage+" (shorthand)")
-
-	usage = "cache length"
-	flag.IntVar(&cacheMinDays, "cacheTime", defaultCacheDays, usage)
-
-	usage = "cache variation"
-	flag.IntVar(&cacheVariation, "cacheSkew", defaultCacheVariation, usage)
-
-	usage = "thumbnail width"
-	flag.IntVar(&thumbWidth, "width", defaultWidth, usage)
-	flag.IntVar(&thumbWidth, "w", defaultWidth, usage+" (shorthand)")
-
-	usage = "thumbnail height"
-	flag.IntVar(&thumbHeight, "height", defaultHeight, usage)
-	flag.IntVar(&thumbHeight, "h", defaultHeight, usage+" (shorthand)")
-
-	usage = "alternate static directory to serve"
-	flag.Var(&staticDir, "static", usage)
-	flag.Var(&staticDir, "s", usage+" (shorthand)")
-
-	usage = "alternate index template to serve"
-	flag.Var(&templateFile, "template", usage)
-	flag.Var(&templateFile, "t", usage+" (shorthand)")
-
-	flag.StringVar(&canonicalURL, "canonicalURl", defaultURL, "canonical host to force")
-	flag.BoolVar(&canonicalDisableTLS, "canonicalDisableTLS", false, "force unencrypted protocol")
-	flag.BoolVar(&canonicalForceTLS, "canonicalForceTLS", false, "force encrypted protocol")
-	flag.BoolVar(&canonicalForceHost, "canonicalForceHost", false, "force a specific hostname")
-	flag.BoolVar(&canonicalForcePort, "canonicalForcePort", false, "force a specific port")
-
-	flag.Parse()
-}
 
 func parseTemplate(logger *log.Logger, fs http.FileSystem) *template.Template {
-	if templateFile.IsSet() {
+	if *templateFile != "" {
 		// if an alternate template was provided, i can use that instead
-		return template.Must(template.ParseFiles(templateFile.String()))
+		return template.Must(template.ParseFiles(*templateFile))
 	}
 	// have to do it the hard way because it comes from fs
 	templFile, err := fs.Open("/page.template")
@@ -129,9 +91,9 @@ func parseTemplate(logger *log.Logger, fs http.FileSystem) *template.Template {
 	return template.Must(template.New("page.template").Parse(string(templData)))
 }
 
-func createStaticFS(logger *log.Logger, path flagTrap.StringTrap) http.FileSystem {
-	if path.IsSet() {
-		return http.Dir(path.String())
+func createStaticFS(logger *log.Logger, path string) http.FileSystem {
+	if path != "" {
+		return http.Dir(path)
 	}
 	filesystem, err := fs.New()
 	if err != nil {
@@ -157,26 +119,26 @@ func buildMuxer(logger *log.Logger,
 	// add a prefix before the handler
 	h = http.StripPrefix("/static/", h)
 	// add some expiration
-	h = dandler.ExpiresRange(day*time.Duration(cacheMinDays),
-		day*time.Duration(cacheVariation), h)
+	h = dandler.ExpiresRange(day*time.Duration(*cacheMinDays),
+		day*time.Duration(*cacheVariation), h)
 	// add the static handler to the muxer
 	mux.Handle("/static/", h)
 
 	// create a caching handler
-	h = dandler.ThumbCache(logger, thumbWidth, thumbHeight, 32<<20, imgDir, "thumbs", "jpg")
+	h = dandler.ThumbCache(logger, *thumbWidth, *thumbHeight, 32<<20, *imgDir, "thumbs", "jpg")
 	// split the folder itself into a redirect
 	h = dandler.Split(http.RedirectHandler("/", 302), h)
 	// strip the prefix
 	h = http.StripPrefix("/thumb/", h)
 	// add some expiration
-	h = dandler.ExpiresRange(day*time.Duration(cacheMinDays),
-		day*time.Duration(cacheVariation), h)
+	h = dandler.ExpiresRange(day*time.Duration(*cacheMinDays),
+		day*time.Duration(*cacheVariation), h)
 	// add the thumbnail handler to the muxer
 	mux.Handle("/thumb/", h)
 
-	h = dandler.DirSplit(logger, imgDir, done,
-		dandler.Index(logger, imgDir, done, templ),
-		dandler.ContentType(logger, imgDir),
+	h = dandler.DirSplit(logger, *imgDir, done,
+		dandler.Index(logger, *imgDir, done, templ),
+		dandler.ContentType(logger, *imgDir),
 	)
 	mux.Handle("/", h)
 
@@ -184,24 +146,24 @@ func buildMuxer(logger *log.Logger,
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)
 
 	// add canonical header if required
-	if canonicalForceHost ||
-		canonicalForcePort ||
-		canonicalForceTLS ||
-		canonicalDisableTLS {
+	if *canonicalForceHost ||
+		*canonicalForcePort ||
+		*canonicalForceTLS ||
+		*canonicalDisableTLS {
 		options := 0
-		if canonicalForceHost {
+		if *canonicalForceHost {
 			options += dandler.ForceHost
 		}
-		if canonicalForcePort {
+		if *canonicalForcePort {
 			options += dandler.ForcePort
 		}
-		if canonicalForceTLS {
+		if *canonicalForceTLS {
 			options += dandler.ForceHTTPS
-		} else if canonicalDisableTLS {
+		} else if *canonicalDisableTLS {
 			options += dandler.ForceHTTP
 		}
 
-		h = dandler.CanonicalHost(canonicalURL, options, h)
+		h = dandler.CanonicalHost(*canonicalURL, options, h)
 	}
 
 	// compress responses
@@ -212,11 +174,11 @@ func buildMuxer(logger *log.Logger,
 
 func main() {
 
-	flags()
+	kingpin.Parse()
 
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
 
-	fs := createStaticFS(logger, staticDir)
+	fs := createStaticFS(logger, *staticDir)
 
 	templ := parseTemplate(logger, fs)
 
@@ -225,5 +187,5 @@ func main() {
 
 	srvHandlers := buildMuxer(logger, fs, templ, done)
 
-	logger.Fatal(http.ListenAndServe(listenAddress, srvHandlers))
+	logger.Fatal(http.ListenAndServe((*listenAddress).String(), srvHandlers))
 }
