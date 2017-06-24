@@ -174,6 +174,9 @@ func buildMuxer(logger *log.Logger,
 
 func main() {
 
+	kingpin.CommandLine.HelpFlag.Short('h')
+	kingpin.CommandLine.Version("1.0")
+	kingpin.CommandLine.Author("jakdept")
 	kingpin.Parse()
 
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
