@@ -10,11 +10,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/alecthomas/kingpin"
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
 	_ "github.com/jakdept/sp9k1/statik"
 	"github.com/rakyll/statik/fs"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 // now would this be shitposting if there were _tests_?
