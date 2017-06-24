@@ -49,7 +49,7 @@ var (
 	listenAddress = kingpin.Flag("listen", "addresses to listen for incoming non-TLS connections").
 			Short('l').Default("127.0.0.1:8080").TCP()
 
-	hostname = kingpin.Flag("hostname", "hostname to register").Short('h').String()
+	hostname = kingpin.Flag("hostname", "hostname to register").String()
 
 	imgDir = kingpin.Flag("images", "directory of images to serve").
 		Short('i').Default("./").ExistingDir()
