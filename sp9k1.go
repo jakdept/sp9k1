@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/crypto/acme/autocert"
+
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
 	_ "github.com/jakdept/sp9k1/statik"
@@ -49,7 +51,8 @@ var (
 	listenAddress = kingpin.Flag("listen", "addresses to listen for incoming non-TLS connections").
 			Short('l').Default("127.0.0.1:8080").TCP()
 
-	hostname = kingpin.Flag("hostname", "hostname to register").String()
+	enableTLS = kingpin.Flag("tls", "enables TLS for server through Let's Encrypt").Default("false").Bool()
+	domain    = kingpin.Flag("hostname", "hostname to register").String()
 
 	imgDir = kingpin.Flag("images", "directory of images to serve").
 		Short('i').Default("./").ExistingDir()
@@ -190,5 +193,16 @@ func main() {
 
 	srvHandlers := buildMuxer(logger, fs, templ, done)
 
-	logger.Fatal(http.ListenAndServe((*listenAddress).String(), srvHandlers))
+	var errChan chan error
+	go func() {
+		errChan <- http.ListenAndServe((*listenAddress).String(), srvHandlers)
+	}()
+	if *enableTLS {
+		go func() {
+			errChan <- http.Serve(autocert.NewListener("example.com"), srvHandlers)
+		}()
+	}
+	for e := range errChan {
+		log.Fatal(e)
+	}
 }
