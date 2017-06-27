@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -48,33 +49,16 @@ var serverBanner = `
 `
 
 var (
-	listenAddress = kingpin.Flag("listen", "addresses to listen for incoming non-TLS connections").
-			Short('l').Default("127.0.0.1:8080").TCP()
-
-	enableTLS = kingpin.Flag("tls", "enables TLS for server through Let's Encrypt").Default("false").Bool()
-	domain    = kingpin.Flag("hostname", "hostname to register").String()
-
-	imgDir = kingpin.Flag("images", "directory of images to serve").
-		Short('i').Default("./").ExistingDir()
-
-	cacheMinDays = kingpin.Flag("cacheMin", "minimum days to cache images in browser").
-			Default("30").Int()
-
-	cacheVariation = kingpin.Flag("cacheVariation", "difference between minimum and maximum length to cache images").
-			Default("7").Int()
-
-	thumbWidth  = kingpin.Flag("width", "maximum thumbnail width").Default("310").Int()
-	thumbHeight = kingpin.Flag("height", "thumbnail height").Default("200").Int()
-
-	staticDir = kingpin.Flag("static", "alternate static directory to serve").Short('s').ExistingDir()
-
-	templateFile = kingpin.Flag("template", "alternate index template to serve").Short('t').ExistingFile()
-
-	canonicalURL        = kingpin.Flag("canonicalURL", "default redirect to serve").Default("localhost:80").String()
-	canonicalDisableTLS = kingpin.Flag("canonicalDisableTLS", "force unencrypted protocol").Default("false").Bool()
-	canonicalForceTLS   = kingpin.Flag("canonicalForceTLS", "force encrypted protocol").Default("true").Bool()
-	canonicalForceHost  = kingpin.Flag("canonicalForceHost", "force a specific hostname").Default("true").Bool()
-	canonicalForcePort  = kingpin.Flag("canonicalForcePort", "force a specific port").Default("false").Bool()
+	listenAddress  = kingpin.Flag("listen", "non-TLS listen addresses").Short('l').Default("127.0.0.1:8080").TCPList()
+	enableTLS      = kingpin.Flag("tls", "enables auto-TLS and push to https").Default("false").Bool()
+	domain         = kingpin.Flag("domain", "domain to register, startup, and redirect to").String()
+	imgDir         = kingpin.Flag("images", "directory of images to serve").Short('i').Default("./").ExistingDir()
+	cacheMinDays   = kingpin.Flag("cacheMin", "minimum days to cache images in browser").Default("30").Int()
+	cacheVariation = kingpin.Flag("cacheDayVariation", "browser cache variation").Default("7").Int()
+	thumbWidth     = kingpin.Flag("width", "maximum thumbnail width").Default("310").Int()
+	thumbHeight    = kingpin.Flag("height", "thumbnail height").Default("200").Int()
+	staticDir      = kingpin.Flag("static", "alternate static directory to serve").Short('s').ExistingDir()
+	templateFile   = kingpin.Flag("template", "alternate index template to serve").Short('t').ExistingFile()
 )
 
 func parseTemplate(logger *log.Logger, fs http.FileSystem) *template.Template {
@@ -145,29 +129,21 @@ func buildMuxer(logger *log.Logger,
 	)
 	mux.Handle("/", h)
 
+	// add canonical header if required
+	if *domain != "" {
+		options := 0
+		options += dandler.ForceHost
+		if *enableTLS {
+			options += dandler.ForceHTTPS
+			h = dandler.CanonicalHost(fmt.Sprintf("%s:443", *domain), options, h)
+		} else {
+			h = dandler.CanonicalHost(fmt.Sprintf("%s:%d", *domain,
+				(*listenAddress)[0].IP), options, h)
+		}
+	}
+
 	h = dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)
-
-	// add canonical header if required
-	if *canonicalForceHost ||
-		*canonicalForcePort ||
-		*canonicalForceTLS ||
-		*canonicalDisableTLS {
-		options := 0
-		if *canonicalForceHost {
-			options += dandler.ForceHost
-		}
-		if *canonicalForcePort {
-			options += dandler.ForcePort
-		}
-		if *canonicalForceTLS {
-			options += dandler.ForceHTTPS
-		} else if *canonicalDisableTLS {
-			options += dandler.ForceHTTP
-		}
-
-		h = dandler.CanonicalHost(*canonicalURL, options, h)
-	}
 
 	// compress responses
 	h = handlers.CompressHandler(h)
@@ -182,6 +158,10 @@ func main() {
 	kingpin.CommandLine.Author("jakdept")
 	kingpin.Parse()
 
+	if *enableTLS && *domain == "" {
+		log.Fatal("failed to start - if you specify --tls you must specify --domain")
+	}
+
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Llongfile)
 
 	fs := createStaticFS(logger, *staticDir)
@@ -195,11 +175,13 @@ func main() {
 
 	var errChan chan error
 	go func() {
-		errChan <- http.ListenAndServe((*listenAddress).String(), srvHandlers)
+		for _, address := range *listenAddress {
+			errChan <- http.ListenAndServe(address.String(), srvHandlers)
+		}
 	}()
 	if *enableTLS {
 		go func() {
-			errChan <- http.Serve(autocert.NewListener("example.com"), srvHandlers)
+			errChan <- http.Serve(autocert.NewListener(*domain), srvHandlers)
 		}()
 	}
 	for e := range errChan {
