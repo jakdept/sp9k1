@@ -28,6 +28,13 @@
         <!-- Add spacer, to align navigation to the right -->
         <div class="mdl-layout-spacer"></div>
         <!-- Navigation. We hide it in small screens. -->
+        <label class="mdl-button mdl-js-button mdl-button--icon" for="fixed-header-drawer-exp">
+          <i class="material-icons">search</i>
+        </label>
+        <div class="mdl-textfield mdl-js-textfield">
+          <input class="mdl-textfield__input" type="text" id="filter">
+          <label class="mdl-textfield__label" for="filter">Filter...</label>
+        </div>
       </div>
     </header>
     {{ with .Dirs }}
@@ -48,8 +55,7 @@
       <div id="image-container" class="image-container">
 
         {{range .Files}}
-        <img class="image-card mdl-shadow--2dp" src="/thumb{{.}}"
-          data-original="{{.}}" alt="{{.}}">
+        <img class="image-card mdl-shadow--2dp" src="/thumb{{.}}" data-original="{{.}}" alt="{{.}}">
         {{end}}
 
       </div>
