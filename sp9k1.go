@@ -1,4 +1,4 @@
-// go:generate statik -src=./static
+// go:generate statik
 
 package main
 
@@ -102,6 +102,8 @@ func buildMuxer(logger *log.Logger,
 		dandler.ContentType(logger, *imgDir),
 	)
 	mux.Handle("/", h)
+
+	h = mux
 
 	// add canonical header if required
 	if *domain != "" {

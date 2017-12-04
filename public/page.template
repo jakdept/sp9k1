@@ -28,12 +28,9 @@
         <!-- Add spacer, to align navigation to the right -->
         <div class="mdl-layout-spacer"></div>
         <!-- Navigation. We hide it in small screens. -->
-        <label class="mdl-button mdl-js-button mdl-button--icon" for="fixed-header-drawer-exp">
-          <i class="material-icons">search</i>
-        </label>
         <div class="mdl-textfield mdl-js-textfield">
-          <input class="mdl-textfield__input" type="text" id="filter">
-          <label class="mdl-textfield__label" for="filter">Filter...</label>
+          <input class="mdl-textfield__input" type="text" id="filter-search">
+          <label class="mdl-textfield__label" for="filter-search">Filter...</label>
         </div>
       </div>
     </header>
