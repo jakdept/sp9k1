@@ -1,4 +1,4 @@
-// go:generate statik -src=./static
+// go:generate statik
 
 package main
 
@@ -21,32 +21,6 @@ import (
 )
 
 // now would this be shitposting if there were _tests_?
-
-var serverBanner = `
-'______________________________________________________________________________
-/                                                                              \
-|                 '.'                           .-:::::::::::::::::::::-'      | 
-|                 -///-'                      '/+++++++++++++++++++++++++-     | 
-|                ':+++++/-                    -++//////////////////////+++     | 
-|                /++++++//:.                  -+/----------------------:++     | 
-|               '/++++///:::.                 -+/---:dddddddds+ymmms----++     | 
-|             .://+////:::::-                 -+/...:mmmmmdyoymNNNNy...-++     | 
-|           '://////::::::::::-.              -++::-:mmmdyoymNNNNNNy--:/++     | 
-|           ://:::::::::::/+++//:'            -+++++ommmhoymNNNNNNNh++++++     | 
-|           :/syys+:::///++syhyo:.            -+++++ommmmdsodNNNNNNh++++++     | 
-|         '.+mdo+hmh++++/ommo+yNh-''          -+++++ommmmmmhosmNNNNh++++++     | 
-|       .//+mN.'''hNs///:mN:'''sNy//-         -+++++ommmmmmmdyohNNNh++++++     | 
-|      '///+NN.'''hNs::::mM-'''sMy/::-        -++++++dmmmmmmmmdssdNh++++++     | 
-|      '::::yNd+/yMd::://sNmo/sMm/:::-        -++++++oyyyyyyyyyyo+s+++++++     | 
-|      '-::::+hmmds//++++/+ydmds/::::-'       -+++++++++++++++++++++++++++     | 
-|   '-///++++++++++++++++++///:::::////:.     '/+++++++++++++++++++++++++-     | 
-|  .///////////+hmmmmmmmmmmmh+::://+///::-      .:::::::+++++++++/:::::-'      | 
-|  ::////////::::+shmmNmmhs+:://++//::::::.             +++++++++:             | 
-|  -:::::::::::::::::::::///+++///:::::::-'             +++++++++:             | 
-|   .-:::::::::::::::////+////:::::::::-.'              +++++++++:             | 
-|      '''''''    ''''''''''''''''''''                  .........'             | 
-\______________________________________________________________________________/
-`
 
 var (
 	listenAddress  = kingpin.Flag("listen", "non-TLS listen addresses").Short('l').Default("127.0.0.1:8080").TCPList()
@@ -129,6 +103,8 @@ func buildMuxer(logger *log.Logger,
 	)
 	mux.Handle("/", h)
 
+	h = mux
+
 	// add canonical header if required
 	if *domain != "" {
 		options := 0
@@ -142,7 +118,6 @@ func buildMuxer(logger *log.Logger,
 		}
 	}
 
-	h = dandler.ASCIIHeader("shit\nposting\n9001", serverBanner, " ", mux)
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)
 
 	// compress responses
