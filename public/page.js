@@ -54,7 +54,7 @@ var filterImages = debounce(function () {
 
 $(document).ready(function () {
 
-  $("#preview-container").onclick = close;
+  $("#preview-container")[0].onclick = close;
   $("#filter-search").keyup(filterImages);
 
   $(".image-card").on("click", function () {
