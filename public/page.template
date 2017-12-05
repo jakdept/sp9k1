@@ -28,7 +28,7 @@
         <!-- Add spacer, to align navigation to the right -->
         <div class="mdl-layout-spacer"></div>
         <!-- Navigation. We hide it in small screens. -->
-        <div class="mdl-textfield mdl-js-textfield">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--align-right">
           <input class="mdl-textfield__input" type="text" id="filter-search">
           <label class="mdl-textfield__label" for="filter-search">Filter...</label>
         </div>

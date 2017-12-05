@@ -38,16 +38,14 @@ var filterImages = debounce(function () {
   var filterString = $(" #filter-search ")[0].value;
   console.log("filtering images by " + filterString);
   close();
-  // show all images
-  $("img").each(function (index) {
-    $(this).show(0);
-  });
 
-  // filter to images that match and hide them
-  $(".image-card").filter(function (index) {
-    return this.dataset.original.indexOf(filterString) < 0;
-  }).each(function (index) {
-    $(this).hide(0);
+  // filter to images that match and hide them and show others
+  $(".image-card").each(function (index) {
+    if (this.dataset.original.indexOf(filterString) < 0) {
+      $(this).hide(0);
+    } else {
+      $(this).show(0);
+    }
   });
 }, 250);
 // }
