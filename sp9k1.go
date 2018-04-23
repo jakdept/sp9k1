@@ -146,12 +146,15 @@ func launchServers(h http.Handler, d chan struct{}, e chan<- error) {
 		HostPolicy: autocert.HostWhitelist(*domain),
 	}
 
-	canonicalURL := fmt.Sprint("https://", *domain, ":", *port)
 	// start a port 80 listener for cert
 	// create the http server on port 80
 	srvHTTP := &http.Server{
-		Addr:    ":http",
-		Handler: cert.HTTPHandler(http.RedirectHandler(canonicalURL, 301)),
+		Addr: ":http",
+		Handler: cert.HTTPHandler(&dandler.RedirectURIHandler{
+			TLS:    true,
+			Domain: *domain,
+			Code:   301,
+		}),
 	}
 	go func() {
 		defer close(d)

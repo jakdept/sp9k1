@@ -1,0 +1,12 @@
+[Unit]
+Description=sp9k1 service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/sp9k1 --images /images/ --domain deleteos.com --port 443 --tls
+Restart=on-abort
+
+
+[Install]
+WantedBy=multi-user.target
