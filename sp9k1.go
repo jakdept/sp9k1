@@ -1,13 +1,11 @@
-// go:generate statik
-
 package main
 
 import (
 	"context"
 	"crypto/tls"
+	"embed"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -17,8 +15,6 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/jakdept/dandler"
-	_ "github.com/jakdept/sp9k1/statik"
-	"github.com/rakyll/statik/fs"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -40,32 +36,17 @@ var (
 	templateFile   = kingpin.Flag("template", "alternate index template to serve").Short('t').ExistingFile()
 )
 
-func parseTemplate(logger *log.Logger, fs http.FileSystem) *template.Template {
+// go:embed public
+var embedFS = embed.FS{}
+
+// parses the page template and returns it to be used in the muxer
+func parseTemplate(logger *log.Logger) *template.Template {
 	if *templateFile != "" {
 		// if an alternate template was provided, i can use that instead
 		return template.Must(template.ParseFiles(*templateFile))
 	}
-	// have to do it the hard way because it comes from fs
-	templFile, err := fs.Open("/page.template")
-	if err != nil {
-		logger.Fatal(err)
-	}
-	templData, err := ioutil.ReadAll(templFile)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	return template.Must(template.New("page.template").Parse(string(templData)))
-}
 
-func createStaticFS(logger *log.Logger, path string) http.FileSystem {
-	if path != "" {
-		return http.Dir(path)
-	}
-	filesystem, err := fs.New()
-	if err != nil {
-		logger.Fatal(err)
-	}
-	return filesystem
+	return template.Must(template.New("page.template").ParseFS(embedFS, "public/page.template"))
 }
 
 func buildMuxer(logger *log.Logger,
@@ -204,11 +185,9 @@ func main() {
 	done := make(chan struct{})
 	defer close(done)
 
-	fs := createStaticFS(logger, *staticDir)
+	templ := parseTemplate(logger)
 
-	templ := parseTemplate(logger, fs)
-
-	srvHandlers := buildMuxer(logger, fs, templ, done)
+	srvHandlers := buildMuxer(logger, http.FS(embedFS), templ, done)
 
 	fmt.Println("launching servers")
 	launchServers(srvHandlers, done, errChan)
